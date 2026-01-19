@@ -36,5 +36,41 @@ export function useBookings() {
       loading.value = false;
     }
   }
-  return { createBooking, loadRange, loading, error };
+
+  // ✅ NUEVO: crea la serie (batch) y devuelve {seriesId, rows}
+  async function createFixedBookings(payloads) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const rows = await repo.createMany(payloads);
+      return rows ?? [];
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function deleteBooking(id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      return await repo.remove(id);
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  return {
+    createBooking,
+    createFixedBookings,
+    deleteBooking,
+    loadRange,
+    loading,
+    error,
+  };
 }

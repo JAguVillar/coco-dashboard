@@ -7,6 +7,8 @@ function toZdt(isoString) {
 }
 
 export function mapBookingToScheduleXEvent(booking) {
+  console.log(booking);
+
   return {
     id: booking.id,
     title: `${booking.booking_type?.icon ?? ""}${
@@ -17,5 +19,8 @@ export function mapBookingToScheduleXEvent(booking) {
     calendarId: booking.court?.slug,
     description: "salkdfjaklsd",
     people: ["Agustin"],
+    meta: {
+      state: booking.booking_state,
+    },
   };
 }

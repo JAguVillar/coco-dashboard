@@ -125,11 +125,19 @@ watch(
 
 const toast = useToast();
 
+function normalizeSelectValue(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value.value ?? null;
+  return value;
+}
+
 async function onSubmit() {
   if (submitting.value) return;
   submitting.value = true;
 
   try {
+    const clientId = normalizeSelectValue(state.clientId);
+
     const payloadUI = {
       title: state.name ?? null,
       date: date.value.toString(), // "YYYY-MM-DD"
@@ -164,7 +172,7 @@ async function onSubmit() {
       return;
     }
 
-    if (!state.clientId) {
+    if (!clientId) {
       toast.add({
         title: "Falta cliente",
         description: "Seleccioná un cliente",
@@ -177,7 +185,7 @@ async function onSubmit() {
 
     // ✅ payload DB real (arreglado)
     const payloadDB = {
-      client_id: state.clientId, // ✅ antes faltaba
+      client_id: clientId, // ✅ antes faltaba
       booking_type_id: state.bookingTypeId,
       court_id: state.courtId, // ✅ sin duplicar
       title: payloadUI.title,
@@ -190,7 +198,7 @@ async function onSubmit() {
     // ✅ mandamos payload rico para que el padre abra whatsapp + refresque eventos
     emit("created", {
       booking: createdEvent,
-      clientId: state.clientId,
+      clientId,
       courtId: state.courtId,
       bookingTypeId: state.bookingTypeId,
       date: payloadUI.date,

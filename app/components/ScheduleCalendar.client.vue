@@ -1,5 +1,13 @@
 <script setup>
-import { shallowRef, ref, onMounted, nextTick, watch, computed } from "vue";
+import {
+  shallowRef,
+  ref,
+  onMounted,
+  nextTick,
+  watch,
+  computed,
+  provide,
+} from "vue";
 import { ScheduleXCalendar } from "@schedule-x/vue";
 import { translations, mergeLocales } from "@schedule-x/translations";
 import {
@@ -13,9 +21,12 @@ import "@schedule-x/theme-default/dist/index.css";
 import { createEventModalPlugin } from "@schedule-x/event-modal";
 import { createCurrentTimePlugin } from "@schedule-x/current-time";
 
+import SxEventModal from "~/components/SxEventModal.vue";
+
 const ready = ref(false);
 const calendarApp = shallowRef();
 const open = ref(false);
+const openFijo = ref(false);
 const eventModal = createEventModalPlugin();
 
 const selectedDate = ref(null);
@@ -27,7 +38,6 @@ const clients = ref([]); // ✅ clientes para WhatsApp
 
 const allEvents = ref([]); // cache de eventos (Schedule-X events)
 const selectedCourtSlug = ref("all"); // "all" | "court1" | "court2"...
-
 const calendarSelectedDate = ref(null);
 
 const courtButtons = computed(() => [
@@ -46,6 +56,10 @@ let eventsService;
 
 const TZ = "America/Argentina/Buenos_Aires";
 const { loadRange } = useBookings();
+// ✅ si ya tenés delete en tu composable, lo usamos.
+// Si no existe, queda undefined y seguimos con borrado solo UI.
+const { deleteBooking } = useBookings();
+
 const { loadCourts } = useCourts();
 const { loadClients } = useClients(); // ✅
 
@@ -108,17 +122,9 @@ function buildCalendarsFromCourts(courts) {
   );
 }
 
-async function getBookingsToday() {
-  const nowZdt = Temporal.Now.zonedDateTimeISO(TZ);
-  const todayPlain = nowZdt.toPlainDate();
-
-  const startOfDay = todayPlain.toZonedDateTime({ timeZone: TZ });
-  const endOfDay = startOfDay.add({ days: 1 });
-
-  const fromISO = startOfDay.toInstant().toString();
-  const toISO = endOfDay.toInstant().toString();
-
-  const events = await loadRange({ fromISO, toISO });
+async function getBookingsWeek() {
+  // Cargar todos los turnos sin filtros de fecha
+  const events = await loadRange({});
 
   allEvents.value = events ?? [];
   applyCourtFilter();
@@ -164,10 +170,8 @@ function normalizePhoneForWaMe(phoneRaw) {
   const digits = String(phoneRaw).replace(/\D/g, "");
   if (!digits) return null;
 
-  // ya viene con 54...
   if (digits.startsWith("54")) return digits;
 
-  // asumimos AR celular
   return `549${digits}`;
 }
 
@@ -197,8 +201,6 @@ function buildWhatsappMessage({
 
 function openWhatsappWeb(phoneDigits, message) {
   const text = encodeURIComponent(message);
-  console.log(phoneDigits);
-
   window.open(
     `https://wa.me/${phoneDigits}?text=${text}`,
     "_blank",
@@ -208,29 +210,70 @@ function openWhatsappWeb(phoneDigits, message) {
 
 /** ✅ Handler que llama el modal */
 async function handleCreated(payload) {
-  // 1) refrescar el calendario
-  await getBookingsToday();
+  await getBookingsWeek();
 
-  // 2) armar y abrir wapp
   const client = clients.value.find((c) => c.id === payload?.clientId) ?? null;
   const phoneDigits = normalizePhoneForWaMe(client?.phone);
-
   if (!phoneDigits) return;
 
   const courtName =
     courts.value.find((c) => c.id === payload?.courtId)?.name ?? "";
+
   const message = buildWhatsappMessage({
     clientName: client?.full_name ?? "",
     dateStr: payload?.date ?? "",
     from: payload?.from ?? "",
     to: payload?.to ?? "",
     courtName,
-    typeName: "", // si querés mostrar el tipo, cargá types en el padre o mandá el name desde el modal
+    typeName: "",
     title: payload?.title ?? "",
   });
 
   openWhatsappWeb(phoneDigits, message);
 }
+
+/** ✅ DELETE: backend (si existe) + UI + cerrar modal */
+async function deleteEvent(calendarEvent) {
+  // 1) backend
+  try {
+    if (typeof deleteBooking === "function") {
+      await deleteBooking(calendarEvent.id);
+    }
+  } catch (e) {
+    console.error("Error borrando en backend:", e);
+    // Si querés bloquear el borrado en UI cuando falla backend:
+    // return;
+  }
+
+  // 2) UI (cache -> re-set)
+  allEvents.value = (allEvents.value ?? []).filter(
+    (e) => e.id !== calendarEvent.id
+  );
+  applyCourtFilter();
+
+  // 3) cerrar modal
+  try {
+    eventModal?.close?.();
+  } catch (e) {
+    // no-op
+  }
+}
+
+// ✅ Custom component para el event-modal
+const customComponents = {
+  eventModal: SxEventModal,
+};
+
+// ✅ Provide handlers al modal custom
+provide("sxModalClose", () => {
+  try {
+    eventModal?.close?.();
+  } catch (e) {}
+});
+
+provide("sxDeleteEvent", async (ev) => {
+  await deleteEvent(ev);
+});
 
 onMounted(async () => {
   const { Temporal } = await import("temporal-polyfill");
@@ -283,6 +326,7 @@ onMounted(async () => {
           2,
           "0"
         )}-${String(start.day).padStart(2, "0")}`;
+
         const from = `${String(start.hour).padStart(2, "0")}:00`;
         const to = `${String(end.hour).padStart(2, "0")}:${String(
           end.minute
@@ -294,8 +338,11 @@ onMounted(async () => {
 
         open.value = true;
       },
+
       onEventClick(event) {
-        console.log(event);
+        // Con el plugin eventModal activo, Schedule-X debería abrir el modal.
+        // Tu custom modal va a renderizarse automáticamente.
+        console.log("event click:", event);
       },
     },
 
@@ -307,9 +354,8 @@ onMounted(async () => {
     events: [],
   });
 
-  // cargar bookings
   try {
-    await getBookingsToday();
+    await getBookingsWeek();
   } catch (e) {
     console.error("Error cargando bookings:", e);
   }
@@ -327,44 +373,82 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-0 flex flex-col">
-    <div class="sticky top-0 z-20 bg-background/90 backdrop-blur p-4">
-      <div class="flex justify-between gap-2">
-        <UModal v-model:open="open">
-          <UButton label="Cargar turno" />
-          <template #content>
-            <TurnoCreateModal
-              :initial-date="selectedDate"
-              :initial-from="selectedFrom"
-              :initial-to="selectedTo"
-              @created="handleCreated"
-              @close="open = false"
-            />
-          </template>
-        </UModal>
-
-        <UButton
-          label="Ir a hora actual"
-          variant="outline"
-          @click="scrollToNow()"
-        />
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <UButtonGroup>
+    <div
+      class="sticky top-0 z-20 border-b border-default bg-background/90 backdrop-blur"
+    >
+      <div class="p-4 space-y-3">
+        <!-- Fila 1: acciones -->
+        <div class="flex items-center justify-between gap-2">
           <UButton
-            v-for="b in courtButtons"
-            :key="b.value"
-            :label="b.label"
-            :variant="selectedCourtSlug === b.value ? 'solid' : 'outline'"
-            size="sm"
-            @click="selectedCourtSlug = b.value"
+            label="Ir a hora actual"
+            icon="i-heroicons-clock"
+            variant="outline"
+            size="md"
+            @click="scrollToNow()"
           />
-        </UButtonGroup>
+
+          <div class="space-x-4">
+            <UModal v-model:open="open">
+              <UButton label="Cargar turno" icon="i-heroicons-plus" size="md" />
+              <template #content>
+                <TurnoCreateModal
+                  :initial-date="selectedDate"
+                  :initial-from="selectedFrom"
+                  :initial-to="selectedTo"
+                  @created="handleCreated"
+                  @close="open = false"
+                />
+              </template>
+            </UModal>
+            <UModal v-model:open="openFijo">
+              <UButton
+                label="Cargar fijo"
+                icon="i-heroicons-calendar"
+                size="md"
+              />
+              <template #content>
+                <TurnoFijoCreateModal
+                  :initial-date="selectedDate"
+                  :initial-from="selectedFrom"
+                  :initial-to="selectedTo"
+                  @created="handleCreated"
+                  @close="openFijo = false"
+                />
+              </template>
+            </UModal>
+          </div>
+        </div>
+
+        <!-- Fila 2: filtros -->
+        <UFieldGroup
+          label="Canchas"
+          class="pt-2"
+          :ui="{
+            container: 'mt-1',
+            description: 'text-xs',
+          }"
+        >
+          <UButtonGroup class="gap-2 w-full sm:w-auto">
+            <UButton
+              v-for="b in courtButtons"
+              :key="b.value"
+              :label="b.label"
+              :variant="selectedCourtSlug === b.value ? 'solid' : 'outline'"
+              size="md"
+              class="flex-1 sm:flex-none"
+              @click="selectedCourtSlug = b.value"
+            />
+          </UButtonGroup>
+        </UFieldGroup>
       </div>
     </div>
 
     <div ref="scrollContainerRef" class="min-h-0 flex-1 overflow-y-auto p-4">
-      <ScheduleXCalendar v-if="ready" :calendar-app="calendarApp" />
+      <ScheduleXCalendar
+        v-if="ready"
+        :calendar-app="calendarApp"
+        :custom-components="customComponents"
+      />
     </div>
   </div>
 </template>

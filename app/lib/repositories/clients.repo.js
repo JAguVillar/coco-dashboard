@@ -28,5 +28,18 @@ export function createClientsRepo(supabase) {
 
       return data;
     },
+
+    async delete(id) {
+      const { data, error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    },
   };
 }

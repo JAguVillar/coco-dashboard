@@ -35,5 +35,19 @@ export function useClients() {
     }
   }
 
-  return { loadClients, createClient, loading, error };
+  async function deleteClient(id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.delete(id);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  return { loadClients, createClient, deleteClient, loading, error };
 }
