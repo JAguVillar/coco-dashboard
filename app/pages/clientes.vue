@@ -137,7 +137,7 @@ onMounted(getClients);
 
         <!-- Modal create -->
         <UModal v-model:open="openCreate">
-          <UButton label="Cargar cliente" />
+          <UButton label="Cargar cliente" icon="i-lucide-plus" size="md" />
           <template #content>
             <ClientesClienteCreateModal
               @created="getClients()"

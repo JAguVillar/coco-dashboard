@@ -21,6 +21,9 @@ export function mapBookingToScheduleXEvent(booking) {
     people: ["Agustin"],
     meta: {
       state: booking.booking_state,
+      client:{
+        client: booking.client
+      }
     },
   };
 }

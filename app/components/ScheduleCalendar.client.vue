@@ -6,7 +6,6 @@ import {
   nextTick,
   watch,
   computed,
-  provide,
 } from "vue";
 import { ScheduleXCalendar } from "@schedule-x/vue";
 import { translations, mergeLocales } from "@schedule-x/translations";
@@ -18,16 +17,12 @@ import {
 } from "@schedule-x/calendar";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
 import "@schedule-x/theme-default/dist/index.css";
-import { createEventModalPlugin } from "@schedule-x/event-modal";
 import { createCurrentTimePlugin } from "@schedule-x/current-time";
-
-import SxEventModal from "~/components/SxEventModal.vue";
 
 const ready = ref(false);
 const calendarApp = shallowRef();
 const open = ref(false);
 const openFijo = ref(false);
-const eventModal = createEventModalPlugin();
 
 const selectedDate = ref(null);
 const selectedFrom = ref(null);
@@ -65,6 +60,15 @@ const { loadClients } = useClients(); // ✅
 
 const scrollContainerRef = ref(null);
 
+/** ✅ Slideover (click en evento) **/
+const slideoverOpen = ref(false);
+const selectedEvent = ref(null);
+
+function openSlideover(ev) {
+  selectedEvent.value = ev ?? null;
+  slideoverOpen.value = true;
+}
+
 function floorToHour(zdt) {
   return zdt.with({
     minute: 0,
@@ -101,10 +105,10 @@ function buildCalendarsFromCourts(courts) {
 
       const colors = hasDbColors
         ? {
-            main: c.color_main,
-            container: c.color_container,
-            onContainer: c.color_on_container,
-          }
+          main: c.color_main,
+          container: c.color_container,
+          onContainer: c.color_on_container,
+        }
         : palette[idx % palette.length];
 
       return [
@@ -125,6 +129,7 @@ function buildCalendarsFromCourts(courts) {
 async function getBookingsWeek() {
   // Cargar todos los turnos sin filtros de fecha
   const events = await loadRange({});
+
 
   allEvents.value = events ?? [];
   applyCourtFilter();
@@ -232,7 +237,7 @@ async function handleCreated(payload) {
   openWhatsappWeb(phoneDigits, message);
 }
 
-/** ✅ DELETE: backend (si existe) + UI + cerrar modal */
+/** ✅ DELETE: backend (si existe) + UI */
 async function deleteEvent(calendarEvent) {
   // 1) backend
   try {
@@ -251,29 +256,12 @@ async function deleteEvent(calendarEvent) {
   );
   applyCourtFilter();
 
-  // 3) cerrar modal
-  try {
-    eventModal?.close?.();
-  } catch (e) {
-    // no-op
+  // 3) cerrar slideover si estaba mostrando este evento
+  if (selectedEvent.value?.id === calendarEvent?.id) {
+    slideoverOpen.value = false;
+    selectedEvent.value = null;
   }
 }
-
-// ✅ Custom component para el event-modal
-const customComponents = {
-  eventModal: SxEventModal,
-};
-
-// ✅ Provide handlers al modal custom
-provide("sxModalClose", () => {
-  try {
-    eventModal?.close?.();
-  } catch (e) {}
-});
-
-provide("sxDeleteEvent", async (ev) => {
-  await deleteEvent(ev);
-});
 
 onMounted(async () => {
   const { Temporal } = await import("temporal-polyfill");
@@ -340,15 +328,15 @@ onMounted(async () => {
       },
 
       onEventClick(event) {
-        // Con el plugin eventModal activo, Schedule-X debería abrir el modal.
-        // Tu custom modal va a renderizarse automáticamente.
+        // ✅ Reemplaza el modal nativo por un slideover
         console.log("event click:", event);
+        openSlideover(event);
       },
     },
 
     selectedDate: calendarSelectedDate.value,
     views: [createViewDay(), createViewWeek(), createViewList()],
-    plugins: [eventsService, eventModal, createCurrentTimePlugin()],
+    plugins: [eventsService, createCurrentTimePlugin()],
 
     calendars: calendarsFromDb,
     events: [],
@@ -373,82 +361,50 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-0 flex flex-col">
-    <div
-      class="sticky top-0 z-20 border-b border-default bg-background/90 backdrop-blur"
-    >
+    <TurnoDetailsSlideover v-model:open="slideoverOpen" :calendar-event="selectedEvent" @delete="deleteEvent" />
+
+
+    <div class="sticky top-0 z-20 border-b border-default bg-background/90 backdrop-blur">
       <div class="p-4 space-y-3">
         <!-- Fila 1: acciones -->
         <div class="flex items-center justify-between gap-2">
-          <UButton
-            label="Ir a hora actual"
-            icon="i-heroicons-clock"
-            variant="outline"
-            size="md"
-            @click="scrollToNow()"
-          />
+          <UButton label="Ir a hora actual" icon="i-lucide-clock" variant="outline" size="md" @click="scrollToNow()" />
 
           <div class="space-x-4">
             <UModal v-model:open="open">
-              <UButton label="Cargar turno" icon="i-heroicons-plus" size="md" />
+              <UButton label="Cargar turno" icon="i-lucide-plus" size="md" />
               <template #content>
-                <TurnoCreateModal
-                  :initial-date="selectedDate"
-                  :initial-from="selectedFrom"
-                  :initial-to="selectedTo"
-                  @created="handleCreated"
-                  @close="open = false"
-                />
+                <TurnoCreateModal :initial-date="selectedDate" :initial-from="selectedFrom" :initial-to="selectedTo"
+                  @created="handleCreated" @close="open = false" />
               </template>
             </UModal>
+
             <UModal v-model:open="openFijo">
-              <UButton
-                label="Cargar fijo"
-                icon="i-heroicons-calendar"
-                size="md"
-              />
+              <UButton label="Cargar fijo" icon="i-lucide-calendar-clock" size="md" />
               <template #content>
-                <TurnoFijoCreateModal
-                  :initial-date="selectedDate"
-                  :initial-from="selectedFrom"
-                  :initial-to="selectedTo"
-                  @created="handleCreated"
-                  @close="openFijo = false"
-                />
+                <TurnoFijoCreateModal :initial-date="selectedDate" :initial-from="selectedFrom" :initial-to="selectedTo"
+                  @created="handleCreated" @close="openFijo = false" />
               </template>
             </UModal>
           </div>
         </div>
 
         <!-- Fila 2: filtros -->
-        <UFieldGroup
-          label="Canchas"
-          class="pt-2"
-          :ui="{
-            container: 'mt-1',
-            description: 'text-xs',
-          }"
-        >
+        <UFieldGroup label="Canchas" class="pt-2" :ui="{
+          container: 'mt-1',
+          description: 'text-xs',
+        }">
           <UButtonGroup class="gap-2 w-full sm:w-auto">
-            <UButton
-              v-for="b in courtButtons"
-              :key="b.value"
-              :label="b.label"
-              :variant="selectedCourtSlug === b.value ? 'solid' : 'outline'"
-              size="md"
-              class="flex-1 sm:flex-none"
-              @click="selectedCourtSlug = b.value"
-            />
+            <UButton v-for="b in courtButtons" :key="b.value" :label="b.label"
+              :variant="selectedCourtSlug === b.value ? 'solid' : 'outline'" size="md" class="flex-1 sm:flex-none"
+              @click="selectedCourtSlug = b.value" />
           </UButtonGroup>
         </UFieldGroup>
       </div>
     </div>
 
     <div ref="scrollContainerRef" class="min-h-0 flex-1 overflow-y-auto p-4">
-      <ScheduleXCalendar
-        v-if="ready"
-        :calendar-app="calendarApp"
-        :custom-components="customComponents"
-      />
+      <ScheduleXCalendar v-if="ready" :calendar-app="calendarApp" />
     </div>
   </div>
 </template>

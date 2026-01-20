@@ -259,79 +259,32 @@ function buildInstants({ date, from, to }) {
         <UInput v-model="state.name" />
       </UFormField>
 
-      <!-- <UFormField label="Cliente" name="clienteId">
-        <USelect
-          v-model="state.clientId"
-          :items="clientItems"
-          placeholder="Seleccioná un cliente"
-          class="w-full"
-        />
-      </UFormField> -->
-
       <UFormField label="Cliente" name="clienteId">
-        <USelectMenu
-          v-model="state.clientId"
-          :items="clientItems"
-          value-attribute="value"
-          option-attribute="label"
-          searchable
-          :search-attributes="['label']"
-          placeholder="Seleccioná un cliente"
-          class="w-full"
-        >
+        <USelectMenu v-model="state.clientId" :items="clientItems" value-attribute="value" option-attribute="label"
+          searchable :search-attributes="['label']" placeholder="Seleccioná un cliente" class="w-full">
           <template #search>
-            <UInput
-              v-model="clientSearch"
-              placeholder="Buscar cliente..."
-              class="w-full"
-            />
+            <UInput v-model="clientSearch" placeholder="Buscar cliente..." class="w-full" />
           </template>
         </USelectMenu>
       </UFormField>
 
       <UFormField label="Tipo de turno" name="bookingTypeId">
-        <USelect
-          v-model="state.bookingTypeId"
-          :items="typeItems"
-          placeholder="Seleccioná un tipo"
-          class="w-full"
-        />
+        <USelect v-model="state.bookingTypeId" :items="typeItems" placeholder="Seleccioná un tipo" class="w-full" />
       </UFormField>
 
       <UFormField label="Cancha" name="court">
-        <USelect
-          v-model="state.courtId"
-          :items="courtItems"
-          placeholder="Seleccioná una cancha"
-          class="w-full"
-        />
+        <USelect v-model="state.courtId" :items="courtItems" placeholder="Seleccioná una cancha" class="w-full" />
       </UFormField>
 
       <UFormField label="Fecha" name="date">
-        <UInputDate
-          ref="inputDate"
-          v-model="date"
-          locale="es-AR"
-          :min-value="minDate"
-        >
+        <UInputDate ref="inputDate" v-model="date" locale="es-AR" :min-value="minDate">
           <template #trailing>
             <UPopover :reference="inputDate?.inputsRef[3]?.$el">
-              <UButton
-                color="neutral"
-                variant="link"
-                size="sm"
-                icon="i-lucide-calendar"
-                aria-label="Select a date"
-                class="px-0"
-              />
+              <UButton color="neutral" variant="link" size="sm" icon="i-lucide-calendar" aria-label="Select a date"
+                class="px-0" />
 
               <template #content>
-                <UCalendar
-                  v-model="date"
-                  class="p-2"
-                  locale="es-AR"
-                  :min-value="minDate"
-                />
+                <UCalendar v-model="date" class="p-2" locale="es-AR" :min-value="minDate" />
               </template>
             </UPopover>
           </template>

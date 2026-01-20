@@ -1,6 +1,6 @@
 <script setup>
 
-const toast = useToast();
+// const toast = useToast();
 
 const open = ref(false);
 
@@ -18,6 +18,14 @@ const links = [
       label: "Clientes",
       icon: "i-lucide-users",
       to: "/clientes",
+      onSelect: () => {
+        open.value = false;
+      },
+    },
+    {
+      label: "Productos",
+      icon: "i-lucide-box",
+      to: "/productos",
       onSelect: () => {
         open.value = false;
       },

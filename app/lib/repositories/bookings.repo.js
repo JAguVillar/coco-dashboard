@@ -4,7 +4,7 @@ export function createBookingsRepo(supabase) {
       let query = supabase
         .from("turnos")
         .select(
-          "id, title, start_at, end_at, court:courts ( id, slug, name ), booking_type:turnos_types ( id, slug, name, color, icon ), booking_state:turnos_states(id, name, icon, color)"
+          "id, title, start_at, end_at, court:courts ( id, slug, name ), booking_type:turnos_types ( id, slug, name, color, icon ), booking_state:turnos_states(id, name, icon, color), client:clients(*)"
         );
 
       // Solo aplicar filtros de fecha si se proporcionan

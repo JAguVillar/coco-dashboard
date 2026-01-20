@@ -153,7 +153,7 @@ function onClose() {
       />
       <UButton
         label="Eliminar"
-        icon="i-heroicons-trash"
+        icon="i-lucide-trash-2"
         color="error"
         size="md"
         @click="onDelete"

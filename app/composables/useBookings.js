@@ -14,6 +14,8 @@ export function useBookings() {
 
     try {
       const rows = await repo.listByRange({ fromISO, toISO }); // <-- RAW DB rows
+      console.log(rows);
+      
       return (rows ?? []).map(mapBookingToScheduleXEvent).filter(Boolean); // por si algo viene raro
     } catch (e) {
       error.value = e;
