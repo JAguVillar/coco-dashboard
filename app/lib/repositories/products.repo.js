@@ -2,7 +2,7 @@ export function createProductsRepo(supabase) {
   return {
     async list() {
       const { data, error } = await supabase
-        .from("products")
+        .from("articulos")
         .select("*")
       if (error) throw error;
       return data ?? [];
@@ -10,18 +10,13 @@ export function createProductsRepo(supabase) {
 
     async create(payload) {
       const { data, error } = await supabase
-        .from("products")
+        .from("articulos")
         .insert(payload)
         .select("*")
         .single();
 
       if (error) {
-        // unique violation (phone ya existe)
-        if (error.code === "23505") {
-          const e = new Error("Ya existe un cliente con ese teléfono.");
-          e.code = "CLIENT_PHONE_EXISTS";
-          throw e;
-        }
+  
         throw error;
       }
 
@@ -30,7 +25,7 @@ export function createProductsRepo(supabase) {
 
     async delete(id) {
       const { data, error } = await supabase
-        .from("products")
+        .from("articulos")
         .delete()
         .eq("id", id)
         .select("*")

@@ -75,7 +75,7 @@ async function onSubmit({ data }) {
     }
 
     toast.add({ title: "Logged in", description: "Welcome back!" });
-    await router.push("/home"); // tu dashboard
+    await router.push("/productos"); // tu dashboard
     return;
   }
 

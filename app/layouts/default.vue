@@ -1,19 +1,10 @@
 <script setup>
-
 // const toast = useToast();
 
 const open = ref(false);
 
 const links = [
   [
-    {
-      label: "Turnos",
-      icon: "i-lucide-house",
-      to: "/turnos",
-      onSelect: () => {
-        open.value = false;
-      },
-    },
     {
       label: "Clientes",
       icon: "i-lucide-users",

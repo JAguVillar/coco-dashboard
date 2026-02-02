@@ -8,39 +8,114 @@ const { createProduct } = useProducts();
 const toast = useToast();
 const submitting = ref(false);
 
+const unidadesMedida = [
+  { value: "kg", label: "Kilogramos (kg)" },
+  { value: "g", label: "Gramos (g)" },
+  { value: "l", label: "Litros (l)" },
+  { value: "ml", label: "Mililitros (ml)" },
+  { value: "unidad", label: "Unidad" },
+];
+
 const schema = z.object({
-  name: z
+  codigo: z
+    .string()
+    .transform((v) => (v == null || v === "" ? null : v.trim())),
+
+  nombre: z
     .string({ required_error: "Ingresa el nombre" })
     .min(2, "El nombre es muy corto")
-    .max(120, "El nombre es muy largo")
+    .max(255, "El nombre es muy largo")
     .transform((v) => v.trim()),
 
-  description: z
+  descripcion: z
     .string()
-    .optional()
-    .transform((v) => (v == null ? "" : v.trim()))
-    .refine((v) => v.length <= 280, "La descripcion es muy larga"),
+    .transform((v) => (v == null || v === "" ? null : v.trim())),
 
-  price: z.preprocess(
-    (v) => (typeof v === "string" ? v.replace(",", ".").trim() : v),
+  categoria: z
+    .string()
+    .transform((v) => (v == null || v === "" ? null : v.trim())),
+
+  unidad_medida: z.string({ required_error: "Selecciona la unidad de medida" }),
+
+  es_fraccionable: z.boolean(),
+
+  stock_actual: z.preprocess(
+    (v) => {
+      if (v === "" || v == null) return 0;
+      return typeof v === "string" ? parseFloat(v.replace(",", ".").trim()) : v;
+    },
     z
       .number({
-        required_error: "Ingresa el precio",
-        invalid_type_error: "Precio invalido",
+        required_error: "Ingresa el stock actual",
+        invalid_type_error: "Stock inválido",
       })
-      .nonnegative("El precio debe ser mayor o igual a 0")
+      .nonnegative("El stock debe ser mayor o igual a 0"),
   ),
 
-  track_stock: z.boolean(),
-  active: z.boolean(),
+  stock_minimo: z.preprocess(
+    (v) => {
+      if (v === "" || v == null) return 0;
+      return typeof v === "string" ? parseFloat(v.replace(",", ".").trim()) : v;
+    },
+    z
+      .number({
+        invalid_type_error: "Stock mínimo inválido",
+      })
+      .nonnegative("El stock mínimo debe ser mayor o igual a 0")
+      .default(0),
+  ),
+
+  precio_compra: z.preprocess(
+    (v) => {
+      if (v === "" || v == null) return null;
+      return typeof v === "string" ? parseFloat(v.replace(",", ".").trim()) : v;
+    },
+    z
+      .number({
+        invalid_type_error: "Precio de compra inválido",
+      })
+      .nonnegative("El precio debe ser mayor o igual a 0")
+      .nullable(),
+  ),
+
+  precio_venta_por_unidad: z.preprocess(
+    (v) => {
+      if (v === "" || v == null) return null;
+      return typeof v === "string" ? parseFloat(v.replace(",", ".").trim()) : v;
+    },
+    z
+      .number({
+        invalid_type_error: "Precio de venta inválido",
+      })
+      .nonnegative("El precio debe ser mayor o igual a 0")
+      .nullable(),
+  ),
+
+  proveedor: z
+    .string()
+    .transform((v) => (v == null || v === "" ? null : v.trim())),
+
+  ubicacion: z
+    .string()
+    .transform((v) => (v == null || v === "" ? null : v.trim())),
+
+  activo: z.boolean(),
 });
 
 const state = reactive({
-  name: "",
-  description: "",
-  price: "",
-  track_stock: true,
-  active: true,
+  codigo: "",
+  nombre: "",
+  descripcion: "",
+  categoria: "",
+  unidad_medida: "kg",
+  es_fraccionable: true,
+  stock_actual: "",
+  stock_minimo: "",
+  precio_compra: "",
+  precio_venta_por_unidad: "",
+  proveedor: "",
+  ubicacion: "",
+  activo: true,
 });
 
 async function onSubmit() {
@@ -51,20 +126,30 @@ async function onSubmit() {
     const parsed = schema.parse(state);
 
     const payloadDB = {
-      name: parsed.name,
-      description: parsed.description || null,
-      price: parsed.price,
-      track_stock: parsed.track_stock,
-      active: parsed.active,
+      codigo: parsed.codigo,
+      nombre: parsed.nombre,
+      descripcion: parsed.descripcion,
+      categoria: parsed.categoria,
+      unidad_medida: parsed.unidad_medida,
+      es_fraccionable: parsed.es_fraccionable,
+      stock_actual: parsed.stock_actual,
+      stock_minimo: parsed.stock_minimo,
+      precio_compra: parsed.precio_compra,
+      precio_venta_por_unidad: parsed.precio_venta_por_unidad,
+      proveedor: parsed.proveedor,
+      ubicacion: parsed.ubicacion,
+      activo: parsed.activo,
     };
 
-    const createdProduct = await createProduct(payloadDB);
+    console.log("Payload a enviar:", payloadDB); // Para debug
 
-    emit("created", createdProduct);
+    const createdArticulo = await createProduct(payloadDB);
+
+    emit("created", createdArticulo);
 
     toast.add({
-      title: "Producto creado",
-      description: "Se guardo correctamente",
+      title: "Artículo creado",
+      description: "Se guardó correctamente",
       color: "success",
     });
 
@@ -75,7 +160,7 @@ async function onSubmit() {
     const zodMessage =
       e?.issues?.[0]?.message || e?.errors?.[0]?.message || null;
 
-    const msg = zodMessage || "No se pudo crear el producto.";
+    const msg = zodMessage || "No se pudo crear el artículo.";
 
     toast.add({
       title: "Error",
@@ -92,7 +177,7 @@ async function onSubmit() {
   <UCard>
     <template #header>
       <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Nuevo producto</h3>
+        <h3 class="font-semibold">Nuevo artículo</h3>
         <UButton
           icon="i-lucide-x"
           variant="ghost"
@@ -104,30 +189,134 @@ async function onSubmit() {
     </template>
 
     <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-      <UFormField label="Nombre" name="name" required>
-        <UInput v-model="state.name" :disabled="submitting" />
-      </UFormField>
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Código" name="codigo">
+          <UInput
+            v-model="state.codigo"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
 
-      <UFormField label="Descripcion" name="description" hint="Opcional (max 280)">
-        <UTextarea v-model="state.description" :disabled="submitting" />
-      </UFormField>
+        <UFormField label="Nombre" name="nombre" required>
+          <UInput
+            v-model="state.nombre"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
 
-      <UFormField label="Precio" name="price" required>
-        <UInput
-          v-model="state.price"
-          type="number"
-          step="0.01"
-          min="0"
+      <UFormField label="Descripción" name="descripcion">
+        <UTextarea
+          v-model="state.descripcion"
           :disabled="submitting"
+          class="w-full"
         />
       </UFormField>
 
-      <UFormField label="Controlar stock" name="track_stock">
-        <USwitch v-model="state.track_stock" :disabled="submitting" />
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Categoría" name="categoria">
+          <UInput
+            v-model="state.categoria"
+            :disabled="submitting"
+            placeholder="Ej: Cereales, Semillas, etc."
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField label="Unidad de medida" name="unidad_medida" required>
+          <USelect
+            v-model="state.unidad_medida"
+            :options="unidadesMedida"
+            option-attribute="label"
+            value-attribute="value"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+
+      <UFormField
+        label="Es fraccionable"
+        name="es_fraccionable"
+        hint="¿Se vende por peso/volumen?"
+      >
+        <USwitch v-model="state.es_fraccionable" :disabled="submitting" />
       </UFormField>
 
-      <UFormField label="Activo" name="active">
-        <USwitch v-model="state.active" :disabled="submitting" />
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Stock actual" name="stock_actual" required>
+          <UInput
+            v-model="state.stock_actual"
+            type="number"
+            step="0.001"
+            min="0"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField label="Stock mínimo" name="stock_minimo">
+          <UInput
+            v-model="state.stock_minimo"
+            type="number"
+            step="0.001"
+            min="0"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Precio de compra" name="precio_compra">
+          <UInput
+            v-model="state.precio_compra"
+            type="number"
+            step="0.01"
+            min="0"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Precio de venta por unidad"
+          name="precio_venta_por_unidad"
+        >
+          <UInput
+            v-model="state.precio_venta_por_unidad"
+            type="number"
+            step="0.01"
+            min="0"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField label="Proveedor" name="proveedor">
+          <UInput
+            v-model="state.proveedor"
+            :disabled="submitting"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField label="Ubicación" name="ubicacion">
+          <UInput
+            v-model="state.ubicacion"
+            :disabled="submitting"
+            placeholder="Ej: Estante A3"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+
+      <UFormField label="Activo" name="activo">
+        <USwitch v-model="state.activo" :disabled="submitting" />
       </UFormField>
 
       <div class="flex justify-end gap-2">
