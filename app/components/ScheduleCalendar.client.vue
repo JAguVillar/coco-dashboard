@@ -328,8 +328,6 @@ onMounted(async () => {
       },
 
       onEventClick(event) {
-        // ✅ Reemplaza el modal nativo por un slideover
-        console.log("event click:", event);
         openSlideover(event);
       },
     },

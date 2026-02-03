@@ -1,73 +1,36 @@
 <script setup>
 import { h, resolveComponent, ref, computed, onMounted } from "vue";
-import { useToast } from "#imports";
 import ProveedorCreateModal from "~/components/proveedores/ProveedorCreateModal.vue";
-// import ProveedorCreateModal from "~/components/proveedores/ProveedorCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
 const USwitch = resolveComponent("USwitch");
 const UBadge = resolveComponent("UBadge");
 
 const { loadProveedores, deleteProveedor } = useProveedores();
-const toast = useToast();
 
 const loading = ref(false);
 const rows = ref([]);
-
 const openCreate = ref(false);
 
-// ✅ modal confirm
-const openConfirmDelete = ref(false);
-const proveedorToDelete = ref(null);
-const deleting = ref(false);
+const {
+  open: openConfirmDelete,
+  itemToDelete,
+  deleting,
+  requestDelete,
+  cancel: cancelDelete,
+  confirm: confirmDelete,
+} = useDeleteConfirmation({
+  deleteFn: deleteProveedor,
+  onSuccess: getProveedores,
+  entityName: "Proveedor",
+});
 
-function getProveedorName(proveedor) {
-  return proveedor?.nombre || "este proveedor";
+function getItemName(item) {
+  return item?.nombre || "este proveedor";
 }
 
 function onEdit(proveedor) {
-  console.log("edit", proveedor);
-}
-
-// ✅ ahora onDelete solo abre modal
-function onDelete(proveedor) {
-  proveedorToDelete.value = proveedor;
-  openConfirmDelete.value = true;
-}
-
-// ✅ confirmar eliminación
-async function confirmDelete() {
-  if (!proveedorToDelete.value || deleting.value) return;
-
-  deleting.value = true;
-  try {
-    await deleteProveedor(proveedorToDelete.value.id);
-
-    toast.add({
-      title: "Proveedor eliminado",
-      description: "Se eliminó correctamente",
-      color: "success",
-    });
-
-    openConfirmDelete.value = false;
-    proveedorToDelete.value = null;
-
-    await getProveedores();
-  } catch (e) {
-    console.error(e);
-    toast.add({
-      title: "Error",
-      description: "No se pudo eliminar el proveedor",
-      color: "error",
-    });
-  } finally {
-    deleting.value = false;
-  }
-}
-
-function cancelDelete() {
-  openConfirmDelete.value = false;
-  proveedorToDelete.value = null;
+  // TODO: implementar edición
 }
 
 const columns = computed(() => [
@@ -82,7 +45,7 @@ const columns = computed(() => [
           ? h(
               "span",
               { class: "text-xs text-gray-500 dark:text-gray-400" },
-              proveedor.razon_social,
+              proveedor.razon_social
             )
           : null,
       ]);
@@ -164,7 +127,7 @@ const columns = computed(() => [
           size: "xs",
           variant: "ghost",
           color: "error",
-          onClick: () => onDelete(proveedor),
+          onClick: () => requestDelete(proveedor),
         }),
       ]);
     },
@@ -198,7 +161,6 @@ onMounted(getProveedores);
       <div class="flex justify-between px-4 py-3.5 border-b border-accented">
         <UInput class="max-w-sm" placeholder="Buscar proveedores..." />
 
-        <!-- Modal create -->
         <UModal v-model:open="openCreate" scrollable>
           <UButton label="Cargar proveedor" icon="i-lucide-plus" size="md" />
           <template #content>
@@ -212,59 +174,14 @@ onMounted(getProveedores);
 
       <BaseTable :rows="rows" :columns="columns" :loading="loading" />
 
-      <!-- ✅ Modal confirm delete -->
-      <UModal v-model:open="openConfirmDelete">
-        <template #content>
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h3 class="font-semibold">Eliminar proveedor</h3>
-                <UButton
-                  icon="i-lucide-x"
-                  variant="ghost"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                />
-              </div>
-            </template>
-
-            <div class="space-y-2">
-              <p class="text-sm">
-                ¿Seguro que querés eliminar a
-                <span class="font-medium">{{
-                  getProveedorName(proveedorToDelete)
-                }}</span
-                >?
-              </p>
-              <p class="text-xs text-gray-500">
-                Esta acción no se puede deshacer.
-              </p>
-            </div>
-
-            <template #footer>
-              <div class="flex justify-end gap-2">
-                <UButton
-                  variant="outline"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                >
-                  Cancelar
-                </UButton>
-
-                <UButton
-                  color="error"
-                  :loading="deleting"
-                  @click="confirmDelete"
-                >
-                  Eliminar
-                </UButton>
-              </div>
-            </template>
-          </UCard>
-        </template>
-      </UModal>
+      <ConfirmDeleteModal
+        v-model:open="openConfirmDelete"
+        title="Eliminar proveedor"
+        :item-name="getItemName(itemToDelete)"
+        :deleting="deleting"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </template>
   </UDashboardPanel>
 </template>

@@ -222,7 +222,6 @@ function onSendWhatsapp() {
   if (!props.calendarEvent || !tab.value) return
 
   const phoneDigits = props.calendarEvent?.meta?.client?.client?.phone
-  console.log(phoneDigits);
 
   const message = buildWhatsappMessageFromTurno({
     calendarEvent: props.calendarEvent,
