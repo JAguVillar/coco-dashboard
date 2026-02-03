@@ -5,6 +5,14 @@ const open = ref(false);
 const links = [
   [
     {
+      label: "Inicio",
+      icon: "i-lucide-home",
+      to: "/home",
+      onSelect: () => {
+        open.value = false;
+      },
+    },
+    {
       label: "Productos",
       icon: "i-lucide-box",
       to: "/productos",
