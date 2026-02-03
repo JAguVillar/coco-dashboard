@@ -6,17 +6,33 @@ const open = ref(false);
 const links = [
   [
     {
-      label: "Clientes",
-      icon: "i-lucide-users",
-      to: "/clientes",
+      label: "Productos",
+      icon: "i-lucide-box",
+      to: "/productos",
       onSelect: () => {
         open.value = false;
       },
     },
     {
-      label: "Productos",
-      icon: "i-lucide-box",
-      to: "/productos",
+      label: "Proveedores",
+      icon: "i-lucide-truck",
+      to: "/proveedores",
+      onSelect: () => {
+        open.value = false;
+      },
+    },
+    {
+      label: "Categorías",
+      icon: "i-lucide-tag",
+      to: "/categorias",
+      onSelect: () => {
+        open.value = false;
+      },
+    },
+    {
+      label: "Clientes",
+      icon: "i-lucide-users",
+      to: "/clientes",
       onSelect: () => {
         open.value = false;
       },

@@ -1,3 +1,3 @@
 <template>
-  <ScheduleCalendar />
+  <div />
 </template>

@@ -1,9 +1,11 @@
 <script setup>
 import * as z from "zod";
 import { useToast } from "#imports";
+import ProveedorCreateModal from "~/components/proveedores/ProveedorCreateModal.vue";
 
 const emit = defineEmits(["close", "created"]);
 const { createProduct } = useProducts();
+const { loadProveedores } = useProveedores();
 
 const toast = useToast();
 const submitting = ref(false);
@@ -15,6 +17,10 @@ const unidadesMedida = [
   { value: "ml", label: "Mililitros (ml)" },
   { value: "unidad", label: "Unidad" },
 ];
+
+const proveedores = ref([]);
+const proveedorSearch = ref("");
+const openProveedorModal = ref(false);
 
 const schema = z.object({
   codigo: z
@@ -91,10 +97,17 @@ const schema = z.object({
       .nullable(),
   ),
 
-  proveedor: z
-    .string()
-    .transform((v) => (v == null || v === "" ? null : v.trim())),
-
+  proveedor_id: z
+    .any() // ✅ Cambiar de .string() a .any()
+    .transform((v) => {
+      // Si es un objeto con value, extraer el value
+      if (v && typeof v === "object" && v.value) return v.value;
+      // Si es string (UUID), retornar directo
+      if (typeof v === "string") return v;
+      // Si es null o vacío, retornar null
+      return null;
+    })
+    .nullable(),
   ubicacion: z
     .string()
     .transform((v) => (v == null || v === "" ? null : v.trim())),
@@ -113,7 +126,7 @@ const state = reactive({
   stock_minimo: "",
   precio_compra: "",
   precio_venta_por_unidad: "",
-  proveedor: "",
+  proveedor_id: null,
   ubicacion: "",
   activo: true,
 });
@@ -136,12 +149,12 @@ async function onSubmit() {
       stock_minimo: parsed.stock_minimo,
       precio_compra: parsed.precio_compra,
       precio_venta_por_unidad: parsed.precio_venta_por_unidad,
-      proveedor: parsed.proveedor,
+      proveedor_id: parsed.proveedor_id,
       ubicacion: parsed.ubicacion,
       activo: parsed.activo,
     };
 
-    console.log("Payload a enviar:", payloadDB); // Para debug
+    console.log("Payload a enviar:", payloadDB);
 
     const createdArticulo = await createProduct(payloadDB);
 
@@ -171,6 +184,37 @@ async function onSubmit() {
     submitting.value = false;
   }
 }
+
+const proveedoresItems = computed(() =>
+  proveedores.value.map((c) => ({
+    label: c.nombre,
+    value: c.id,
+  })),
+);
+
+function openCreateProveedor() {
+  openProveedorModal.value = true;
+}
+
+async function onProveedorCreated(proveedor) {
+  // Recargar lista de proveedores
+  const proveedoresData = await loadProveedores?.();
+  proveedores.value = proveedoresData ?? [];
+
+  // Seleccionar el nuevo proveedor automáticamente
+  state.proveedor_id = proveedor.id;
+
+  toast.add({
+    title: "Proveedor creado",
+    description: "Ahora podés seleccionarlo",
+    color: "success",
+  });
+}
+
+onMounted(async () => {
+  const proveedoresData = await loadProveedores?.();
+  proveedores.value = proveedoresData ?? [];
+});
 </script>
 
 <template>
@@ -228,7 +272,7 @@ async function onSubmit() {
         <UFormField label="Unidad de medida" name="unidad_medida" required>
           <USelect
             v-model="state.unidad_medida"
-            :options="unidadesMedida"
+            :items="unidadesMedida"
             option-attribute="label"
             value-attribute="value"
             :disabled="submitting"
@@ -297,12 +341,36 @@ async function onSubmit() {
       </div>
 
       <div class="grid grid-cols-2 gap-4">
-        <UFormField label="Proveedor" name="proveedor">
-          <UInput
-            v-model="state.proveedor"
-            :disabled="submitting"
+        <UFormField label="Proveedor" name="proveedor_id">
+          <template #hint>
+            <UButton
+              variant="link"
+              size="xs"
+              color="primary"
+              :padded="false"
+              @click="openCreateProveedor"
+            >
+              + Crear proveedor
+            </UButton>
+          </template>
+          <USelectMenu
+            v-model="state.proveedor_id"
+            :items="proveedoresItems"
+            value-attribute="value"
+            option-attribute="label"
+            searchable
+            :search-attributes="['label']"
+            placeholder="Seleccioná un proveedor"
             class="w-full"
-          />
+          >
+            <template #search>
+              <UInput
+                v-model="proveedorSearch"
+                placeholder="Buscar proveedor..."
+                class="w-full"
+              />
+            </template>
+          </USelectMenu>
         </UFormField>
 
         <UFormField label="Ubicación" name="ubicacion">
@@ -331,5 +399,15 @@ async function onSubmit() {
         <UButton type="submit" :loading="submitting"> Guardar </UButton>
       </div>
     </UForm>
+
+    <!-- Modal para crear proveedor -->
+    <UModal v-model:open="openProveedorModal" scrollable>
+      <template #content>
+        <ProveedorCreateModal
+          @created="onProveedorCreated"
+          @close="openProveedorModal = false"
+        />
+      </template>
+    </UModal>
   </UCard>
 </template>
