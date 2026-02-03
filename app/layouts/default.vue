@@ -1,4 +1,5 @@
 <script setup>
+const user = useSupabaseUser();
 const open = ref(false);
 
 const links = [
