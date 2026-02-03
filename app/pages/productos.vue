@@ -1,6 +1,5 @@
 <script setup>
 import { h, resolveComponent, ref, computed, onMounted } from "vue";
-import { useToast } from "#imports";
 import ProductoCreateModal from "~/components/productos/ProductoCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
@@ -8,65 +7,30 @@ const USwitch = resolveComponent("USwitch");
 const UBadge = resolveComponent("UBadge");
 
 const { loadProducts, deleteProduct } = useProducts();
-const toast = useToast();
 
 const loading = ref(false);
 const rows = ref([]);
-
 const openCreate = ref(false);
 
-// ✅ modal confirm
-const openConfirmDelete = ref(false);
-const articuloToDelete = ref(null);
-const deleting = ref(false);
+const {
+  open: openConfirmDelete,
+  itemToDelete,
+  deleting,
+  requestDelete,
+  cancel: cancelDelete,
+  confirm: confirmDelete,
+} = useDeleteConfirmation({
+  deleteFn: deleteProduct,
+  onSuccess: getProductos,
+  entityName: "Artículo",
+});
 
-function getArticuloName(articulo) {
-  return articulo?.nombre || "este artículo";
+function getItemName(item) {
+  return item?.nombre || "este artículo";
 }
 
 function onEdit(articulo) {
-  console.log("edit", articulo);
-}
-
-// ✅ ahora onDelete solo abre modal
-function onDelete(articulo) {
-  articuloToDelete.value = articulo;
-  openConfirmDelete.value = true;
-}
-
-// ✅ confirmar eliminación
-async function confirmDelete() {
-  if (!articuloToDelete.value || deleting.value) return;
-
-  deleting.value = true;
-  try {
-    await deleteProduct(articuloToDelete.value.id);
-
-    toast.add({
-      title: "Artículo eliminado",
-      description: "Se eliminó correctamente",
-      color: "success",
-    });
-
-    openConfirmDelete.value = false;
-    articuloToDelete.value = null;
-
-    await getProductos();
-  } catch (e) {
-    console.error(e);
-    toast.add({
-      title: "Error",
-      description: "No se pudo eliminar el artículo",
-      color: "error",
-    });
-  } finally {
-    deleting.value = false;
-  }
-}
-
-function cancelDelete() {
-  openConfirmDelete.value = false;
-  articuloToDelete.value = null;
+  // TODO: implementar edición
 }
 
 function formatPrice(price) {
@@ -100,7 +64,7 @@ const columns = computed(() => [
           ? h(
               "span",
               { class: "text-xs text-gray-500 dark:text-gray-400" },
-              articulo.descripcion,
+              articulo.descripcion
             )
           : null,
       ]);
@@ -125,13 +89,13 @@ const columns = computed(() => [
         h(
           UBadge,
           { color: getStockColor(articulo), variant: "subtle" },
-          () => `${articulo.stock_actual} ${articulo.unidad_medida}`,
+          () => `${articulo.stock_actual} ${articulo.unidad_medida}`
         ),
         articulo.stock_minimo > 0
           ? h(
               "span",
               { class: "text-xs text-gray-500" },
-              `(mín: ${articulo.stock_minimo})`,
+              `(mín: ${articulo.stock_minimo})`
             )
           : null,
       ]);
@@ -144,7 +108,7 @@ const columns = computed(() => [
       h(
         "span",
         { class: "font-medium" },
-        formatPrice(row.getValue("precio_venta_por_unidad")),
+        formatPrice(row.getValue("precio_venta_por_unidad"))
       ),
   },
   {
@@ -182,7 +146,7 @@ const columns = computed(() => [
           size: "xs",
           variant: "ghost",
           color: "error",
-          onClick: () => onDelete(articulo),
+          onClick: () => requestDelete(articulo),
         }),
       ]);
     },
@@ -203,7 +167,7 @@ onMounted(getProductos);
 </script>
 
 <template>
-  <UDashboardPanel id="home">
+  <UDashboardPanel id="productos">
     <template #header>
       <UDashboardNavbar title="Artículos" :ui="{ right: 'gap-3' }">
         <template #leading>
@@ -216,7 +180,6 @@ onMounted(getProductos);
       <div class="flex justify-between px-4 py-3.5 border-b border-accented">
         <UInput class="max-w-sm" placeholder="Buscar artículos..." />
 
-        <!-- Modal create -->
         <UModal v-model:open="openCreate">
           <UButton label="Cargar artículo" icon="i-lucide-plus" size="md" />
           <template #content>
@@ -230,59 +193,14 @@ onMounted(getProductos);
 
       <BaseTable :rows="rows" :columns="columns" :loading="loading" />
 
-      <!-- ✅ Modal confirm delete -->
-      <UModal v-model:open="openConfirmDelete">
-        <template #content>
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h3 class="font-semibold">Eliminar artículo</h3>
-                <UButton
-                  icon="i-lucide-x"
-                  variant="ghost"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                />
-              </div>
-            </template>
-
-            <div class="space-y-2">
-              <p class="text-sm">
-                ¿Seguro que querés eliminar
-                <span class="font-medium">{{
-                  getArticuloName(articuloToDelete)
-                }}</span
-                >?
-              </p>
-              <p class="text-xs text-gray-500">
-                Esta acción no se puede deshacer.
-              </p>
-            </div>
-
-            <template #footer>
-              <div class="flex justify-end gap-2">
-                <UButton
-                  variant="outline"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                >
-                  Cancelar
-                </UButton>
-
-                <UButton
-                  color="error"
-                  :loading="deleting"
-                  @click="confirmDelete"
-                >
-                  Eliminar
-                </UButton>
-              </div>
-            </template>
-          </UCard>
-        </template>
-      </UModal>
+      <ConfirmDeleteModal
+        v-model:open="openConfirmDelete"
+        title="Eliminar artículo"
+        :item-name="getItemName(itemToDelete)"
+        :deleting="deleting"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </template>
   </UDashboardPanel>
 </template>

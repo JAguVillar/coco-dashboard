@@ -154,8 +154,6 @@ async function onSubmit() {
       activo: parsed.activo,
     };
 
-    console.log("Payload a enviar:", payloadDB);
-
     const createdArticulo = await createProduct(payloadDB);
 
     emit("created", createdArticulo);

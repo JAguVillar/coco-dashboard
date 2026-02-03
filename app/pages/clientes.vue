@@ -1,73 +1,38 @@
 <script setup>
 import { h, resolveComponent, ref, computed, onMounted } from "vue";
-import { useToast } from "#imports";
+import ClienteCreateModal from "~/components/clientes/ClienteCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
 
 const { loadClients, deleteClient } = useClients();
-const toast = useToast();
 
 const loading = ref(false);
 const rows = ref([]);
-
 const openCreate = ref(false);
 
-// ✅ modal confirm
-const openConfirmDelete = ref(false);
-const clientToDelete = ref(null);
-const deleting = ref(false);
+const {
+  open: openConfirmDelete,
+  itemToDelete,
+  deleting,
+  requestDelete,
+  cancel: cancelDelete,
+  confirm: confirmDelete,
+} = useDeleteConfirmation({
+  deleteFn: deleteClient,
+  onSuccess: getClients,
+  entityName: "Cliente",
+});
 
-function getClientName(client) {
+function getItemName(item) {
   return (
-    client?.full_name ||
-    `${client?.first_name ?? ""} ${client?.last_name ?? ""}`.trim() ||
+    item?.full_name ||
+    `${item?.first_name ?? ""} ${item?.last_name ?? ""}`.trim() ||
     "este cliente"
   );
 }
 
 function onEdit(client) {
-  console.log("edit", client);
-}
-
-// ✅ ahora onDelete solo abre modal
-function onDelete(client) {
-  clientToDelete.value = client;
-  openConfirmDelete.value = true;
-}
-
-// ✅ confirmar eliminación
-async function confirmDelete() {
-  if (!clientToDelete.value || deleting.value) return;
-
-  deleting.value = true;
-  try {
-    await deleteClient(clientToDelete.value.id);
-
-    toast.add({
-      title: "Cliente eliminado",
-      description: "Se eliminó correctamente",
-      color: "success",
-    });
-
-    openConfirmDelete.value = false;
-    clientToDelete.value = null;
-
-    await getClients();
-  } catch (e) {
-    console.error(e);
-    toast.add({
-      title: "Error",
-      description: "No se pudo eliminar el cliente",
-      color: "error",
-    });
-  } finally {
-    deleting.value = false;
-  }
-}
-
-function cancelDelete() {
-  openConfirmDelete.value = false;
-  clientToDelete.value = null;
+  // TODO: implementar edición
 }
 
 const columns = computed(() => [
@@ -101,7 +66,7 @@ const columns = computed(() => [
           size: "xs",
           variant: "ghost",
           color: "error",
-          onClick: () => onDelete(client),
+          onClick: () => requestDelete(client),
         }),
       ]);
     },
@@ -122,7 +87,7 @@ onMounted(getClients);
 </script>
 
 <template>
-  <UDashboardPanel id="home">
+  <UDashboardPanel id="clientes">
     <template #header>
       <UDashboardNavbar title="Clientes" :ui="{ right: 'gap-3' }">
         <template #leading>
@@ -133,13 +98,12 @@ onMounted(getClients);
 
     <template #body>
       <div class="flex justify-between px-4 py-3.5 border-b border-accented">
-        <UInput class="max-w-sm" placeholder="Filter..." />
+        <UInput class="max-w-sm" placeholder="Buscar clientes..." />
 
-        <!-- Modal create -->
         <UModal v-model:open="openCreate">
           <UButton label="Cargar cliente" icon="i-lucide-plus" size="md" />
           <template #content>
-            <ClientesClienteCreateModal
+            <ClienteCreateModal
               @created="getClients()"
               @close="openCreate = false"
             />
@@ -149,59 +113,14 @@ onMounted(getClients);
 
       <BaseTable :rows="rows" :columns="columns" :loading="loading" />
 
-      <!-- ✅ Modal confirm delete -->
-      <UModal v-model:open="openConfirmDelete">
-        <template #content>
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h3 class="font-semibold">Eliminar cliente</h3>
-                <UButton
-                  icon="i-lucide-x"
-                  variant="ghost"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                />
-              </div>
-            </template>
-
-            <div class="space-y-2">
-              <p class="text-sm">
-                ¿Seguro que querés eliminar a
-                <span class="font-medium">{{
-                  getClientName(clientToDelete)
-                }}</span
-                >?
-              </p>
-              <p class="text-xs text-gray-500">
-                Esta acción no se puede deshacer.
-              </p>
-            </div>
-
-            <template #footer>
-              <div class="flex justify-end gap-2">
-                <UButton
-                  variant="outline"
-                  color="neutral"
-                  :disabled="deleting"
-                  @click="cancelDelete"
-                >
-                  Cancelar
-                </UButton>
-
-                <UButton
-                  color="error"
-                  :loading="deleting"
-                  @click="confirmDelete"
-                >
-                  Eliminar
-                </UButton>
-              </div>
-            </template>
-          </UCard>
-        </template>
-      </UModal>
+      <ConfirmDeleteModal
+        v-model:open="openConfirmDelete"
+        title="Eliminar cliente"
+        :item-name="getItemName(itemToDelete)"
+        :deleting="deleting"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </template>
   </UDashboardPanel>
 </template>

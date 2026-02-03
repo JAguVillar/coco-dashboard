@@ -1,4 +1,3 @@
-// composables/useTabs.js
 import { createTabsRepo } from "@/lib/repositories/tabs.repo"
 import { createTabItemsRepo } from "@/lib/repositories/tabsItems.repo"
 
