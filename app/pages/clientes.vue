@@ -1,6 +1,5 @@
 <script setup>
 import { h, resolveComponent, ref, computed, onMounted } from "vue";
-import ClienteCreateModal from "~/components/clientes/ClienteCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
 
@@ -88,27 +87,17 @@ onMounted(getClients);
 
 <template>
   <UDashboardPanel id="clientes">
-    <template #header>
-      <UDashboardNavbar title="Clientes" :ui="{ right: 'gap-3' }">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
-    </template>
-
     <template #body>
-      <div class="flex justify-between px-4 py-3.5 border-b border-accented">
-        <UInput class="max-w-sm" placeholder="Buscar clientes..." />
-
-        <UModal v-model:open="openCreate">
-          <UButton label="Cargar cliente" icon="i-lucide-plus" size="md" />
-          <template #content>
-            <ClienteCreateModal
-              @created="getClients()"
-              @close="openCreate = false"
-            />
-          </template>
-        </UModal>
+      <div class="flex justify-between py-3.5 border-b border-accented">
+        <div class="flex items-center gap-2">
+          <UInput
+            class="w-72 lg:w-80"
+            placeholder="Buscar clientes..."
+            icon="i-lucide-search"
+            variant="soft"
+          />
+          <!-- futuro: filtros acá -->
+        </div>
       </div>
 
       <BaseTable :rows="rows" :columns="columns" :loading="loading" />

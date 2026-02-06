@@ -64,7 +64,7 @@ const columns = computed(() => [
           ? h(
               "span",
               { class: "text-xs text-gray-500 dark:text-gray-400" },
-              articulo.descripcion
+              articulo.descripcion,
             )
           : null,
       ]);
@@ -89,13 +89,13 @@ const columns = computed(() => [
         h(
           UBadge,
           { color: getStockColor(articulo), variant: "subtle" },
-          () => `${articulo.stock_actual} ${articulo.unidad_medida}`
+          () => `${articulo.stock_actual} ${articulo.unidad_medida}`,
         ),
         articulo.stock_minimo > 0
           ? h(
               "span",
               { class: "text-xs text-gray-500" },
-              `(mín: ${articulo.stock_minimo})`
+              `(mín: ${articulo.stock_minimo})`,
             )
           : null,
       ]);
@@ -108,7 +108,7 @@ const columns = computed(() => [
       h(
         "span",
         { class: "font-medium" },
-        formatPrice(row.getValue("precio_venta_por_unidad"))
+        formatPrice(row.getValue("precio_venta_por_unidad")),
       ),
   },
   {
@@ -167,40 +167,44 @@ onMounted(getProductos);
 </script>
 
 <template>
-  <UDashboardPanel id="productos">
-    <template #header>
-      <UDashboardNavbar title="Artículos" :ui="{ right: 'gap-3' }">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
-    </template>
-
-    <template #body>
-      <div class="flex justify-between px-4 py-3.5 border-b border-accented">
-        <UInput class="max-w-sm" placeholder="Buscar artículos..." />
-
-        <UModal v-model:open="openCreate">
-          <UButton label="Cargar artículo" icon="i-lucide-plus" size="md" />
-          <template #content>
-            <ProductoCreateModal
-              @created="getProductos()"
-              @close="openCreate = false"
-            />
-          </template>
-        </UModal>
+  <div>
+    <div class="flex justify-between py-3.5 border-b border-accented">
+      <div class="flex items-center gap-2">
+        <UInput
+          class="w-72 lg:w-80"
+          placeholder="Buscar artículos..."
+          icon="i-lucide-search"
+          variant="soft"
+        />
+        <!-- futuro: filtros acá -->
       </div>
 
-      <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+      <UModal v-model:open="openCreate">
+        <UButton
+          label="Cargar artículo"
+          icon="i-lucide-plus"
+          variant="outline"
+          color="neutral"
+          size="md"
+        />
+        <template #content>
+          <ProductoCreateModal
+            @created="getProductos()"
+            @close="openCreate = false"
+          />
+        </template>
+      </UModal>
+    </div>
 
-      <ConfirmDeleteModal
-        v-model:open="openConfirmDelete"
-        title="Eliminar artículo"
-        :item-name="getItemName(itemToDelete)"
-        :deleting="deleting"
-        @confirm="confirmDelete"
-        @cancel="cancelDelete"
-      />
-    </template>
-  </UDashboardPanel>
+    <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+
+    <ConfirmDeleteModal
+      v-model:open="openConfirmDelete"
+      title="Eliminar artículo"
+      :item-name="getItemName(itemToDelete)"
+      :deleting="deleting"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
+  </div>
 </template>

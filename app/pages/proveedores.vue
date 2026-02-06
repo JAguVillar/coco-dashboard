@@ -45,7 +45,7 @@ const columns = computed(() => [
           ? h(
               "span",
               { class: "text-xs text-gray-500 dark:text-gray-400" },
-              proveedor.razon_social
+              proveedor.razon_social,
             )
           : null,
       ]);
@@ -149,20 +149,26 @@ onMounted(getProveedores);
 
 <template>
   <UDashboardPanel id="proveedores">
-    <template #header>
-      <UDashboardNavbar title="Proveedores" :ui="{ right: 'gap-3' }">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
-    </template>
-
     <template #body>
-      <div class="flex justify-between px-4 py-3.5 border-b border-accented">
-        <UInput class="max-w-sm" placeholder="Buscar proveedores..." />
+      <div class="flex justify-between py-3.5 border-b border-accented">
+        <div class="flex items-center gap-2">
+          <UInput
+            class="w-72 lg:w-80"
+            placeholder="Buscar proveedores..."
+            icon="i-lucide-search"
+            variant="soft"
+          />
+          <!-- futuro: filtros acá -->
+        </div>
 
         <UModal v-model:open="openCreate" scrollable>
-          <UButton label="Cargar proveedor" icon="i-lucide-plus" size="md" />
+          <UButton
+            label="Cargar proveedor"
+            icon="i-lucide-plus"
+            variant="outline"
+            color="neutral"
+            size="md"
+          />
           <template #content>
             <ProveedorCreateModal
               @created="getProveedores()"

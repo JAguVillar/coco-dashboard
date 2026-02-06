@@ -43,7 +43,7 @@ const columns = computed(() => [
           ? h(
               "span",
               { class: "text-xs text-gray-500 dark:text-gray-400" },
-              categoria.descripcion
+              categoria.descripcion,
             )
           : null,
       ]);
@@ -88,27 +88,17 @@ onMounted(getCategorias);
 
 <template>
   <UDashboardPanel id="categorias">
-    <template #header>
-      <UDashboardNavbar title="Categorías" :ui="{ right: 'gap-3' }">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
-    </template>
-
     <template #body>
-      <div class="flex justify-between px-4 py-3.5 border-b border-accented">
-        <UInput class="max-w-sm" placeholder="Buscar categorías..." />
-
-        <UModal v-model:open="openCreate">
-          <UButton label="Cargar categoría" icon="i-lucide-plus" size="md" />
-          <template #content>
-            <CategoriaCreateModal
-              @created="getCategorias()"
-              @close="openCreate = false"
-            />
-          </template>
-        </UModal>
+      <div class="flex justify-between py-3.5 border-b border-accented">
+        <div class="flex items-center gap-2">
+          <UInput
+            class="w-72 lg:w-80"
+            placeholder="Buscar categorías..."
+            icon="i-lucide-search"
+            variant="soft"
+          />
+          <!-- futuro: filtros acá -->
+        </div>
       </div>
 
       <BaseTable :rows="rows" :columns="columns" :loading="loading" />
