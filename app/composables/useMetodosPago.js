@@ -11,8 +11,8 @@ export function useMetodosPago() {
     loading.value = true;
     error.value = null;
     try {
-      const rows = await repo.list();
-      return rows;
+      const { data } = await repo.list();
+      return data ?? [];
     } catch (e) {
       error.value = e;
       throw e;
@@ -26,6 +26,20 @@ export function useMetodosPago() {
     error.value = null;
     try {
       const row = await repo.create(payload);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function updateMetodoPago(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.update(id, payload);
       return row;
     } catch (e) {
       error.value = e;
@@ -49,5 +63,5 @@ export function useMetodosPago() {
     }
   }
 
-  return { loadMetodosPago, createMetodoPago, deleteMetodoPago, loading, error };
+  return { loadMetodosPago, createMetodoPago, updateMetodoPago, deleteMetodoPago, loading, error };
 }

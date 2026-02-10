@@ -103,6 +103,18 @@ export function createVentasRepo(supabase) {
       return data;
     },
 
+    async updateVenta(id, payload) {
+      const { data, error } = await supabase
+        .from("ventas")
+        .update(payload)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+
     async addItem(payload) {
       const { data, error } = await supabase
         .from("venta_items")
@@ -115,12 +127,16 @@ export function createVentasRepo(supabase) {
     },
 
     async deleteItem(itemId) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("venta_items")
         .delete()
-        .eq("id", itemId);
+        .eq("id", itemId)
+        .select("*")
+        .single();
 
       if (error) throw error;
+
+      return data;
     },
 
     async completeVenta(id, payload) {
@@ -151,12 +167,16 @@ export function createVentasRepo(supabase) {
     },
 
     async delete(id) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("ventas")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select("*")
+        .single();
 
       if (error) throw error;
+
+      return data;
     },
   };
 }

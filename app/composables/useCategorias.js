@@ -44,6 +44,20 @@ export function useCategorias() {
     }
   }
 
+  async function updateCategoria(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.update(id, payload);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function deleteCategoria(id) {
     loading.value = true;
     error.value = null;
@@ -58,5 +72,5 @@ export function useCategorias() {
     }
   }
 
-  return { loadCategorias, createCategoria, deleteCategoria, loading, error };
+  return { loadCategorias, createCategoria, updateCategoria, deleteCategoria, loading, error };
 }

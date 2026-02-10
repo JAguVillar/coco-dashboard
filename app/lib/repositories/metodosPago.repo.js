@@ -1,11 +1,17 @@
 export function createMetodosPagoRepo(supabase) {
   return {
-    async list() {
-      const { data, error } = await supabase
+    async list({ from, to } = {}) {
+      let query = supabase
         .from("metodos_pago")
-        .select("*")
+        .select("*", { count: "exact" });
+
+      if (from !== undefined && to !== undefined) {
+        query = query.range(from, to);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data ?? [];
+      return { data: data ?? [], count: count ?? 0 };
     },
 
     async create(payload) {
@@ -15,10 +21,20 @@ export function createMetodosPagoRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) {
-  
-        throw error;
-      }
+      if (error) throw error;
+
+      return data;
+    },
+
+    async update(id, payload) {
+      const { data, error } = await supabase
+        .from("metodos_pago")
+        .update(payload)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
 
       return data;
     },

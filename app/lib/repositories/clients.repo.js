@@ -1,3 +1,5 @@
+import { mapDatabaseError } from "@/lib/utils/errors";
+
 export function createClientsRepo(supabase) {
   return {
     async list({ from, to } = {}) {
@@ -11,7 +13,7 @@ export function createClientsRepo(supabase) {
       }
 
       const { data, error, count } = await query;
-      if (error) throw error;
+      if (error) throw mapDatabaseError(error);
       return { data: data ?? [], count: count ?? 0 };
     },
 
@@ -22,15 +24,20 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) {
-        // unique violation (phone ya existe)
-        if (error.code === "23505") {
-          const e = new Error("Ya existe un cliente con ese teléfono.");
-          e.code = "CLIENT_PHONE_EXISTS";
-          throw e;
-        }
-        throw error;
-      }
+      if (error) throw mapDatabaseError(error, { entity: "clients" });
+
+      return data;
+    },
+
+    async update(id, payload) {
+      const { data, error } = await supabase
+        .from("clients")
+        .update(payload)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) throw mapDatabaseError(error, { entity: "clients" });
 
       return data;
     },
@@ -43,7 +50,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw error;
+      if (error) throw mapDatabaseError(error);
 
       return data;
     },
