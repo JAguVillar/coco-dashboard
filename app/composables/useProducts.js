@@ -44,6 +44,20 @@ export function useProducts() {
     }
   }
 
+  async function updateProduct(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.update(id, payload);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function deleteProduct(id) {
     loading.value = true;
     error.value = null;
@@ -58,5 +72,5 @@ export function useProducts() {
     }
   }
 
-  return { loadProducts, createProduct, deleteProduct, loading, error };
+  return { loadProducts, createProduct, updateProduct, deleteProduct, loading, error };
 }

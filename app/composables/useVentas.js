@@ -1,4 +1,10 @@
 import { createVentasRepo } from "@/lib/repositories/ventas.repo";
+import {
+  normalizeClienteId,
+  createVentaPayload,
+  createVentaItemPayload,
+  createCompleteVentaPayload,
+} from "@/lib/services/ventas.service";
 
 export function useVentas() {
   const supabase = useSupabaseClient();
@@ -13,21 +19,11 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const normalizedClienteId =
-        cliente_id == null
-          ? null
-          : typeof cliente_id === "object"
-            ? (cliente_id.value ?? null)
-            : cliente_id;
-
-      const payload = {
-        cliente_id: normalizedClienteId,
+      const payload = createVentaPayload({
+        cliente_id: normalizeClienteId(cliente_id),
         vendedor_id: user.value?.id,
         notas,
-        subtotal: 0,
-        descuento: 0,
-        total: 0,
-      };
+      });
 
       const data = await repo.createVenta(payload);
       return data;
@@ -44,18 +40,13 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const subtotal = cantidad * precio_unitario;
-      const total = subtotal - descuento;
-
-      const payload = {
+      const payload = createVentaItemPayload({
         venta_id,
         articulo_id,
         cantidad,
         precio_unitario,
-        subtotal,
         descuento,
-        total,
-      };
+      });
 
       const data = await repo.addItem(payload);
       return data;
@@ -101,11 +92,11 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const payload = {
+      const payload = createCompleteVentaPayload({
         metodo_pago_id,
         numero_comprobante,
         tipo_comprobante,
-      };
+      });
 
       const data = await repo.completeVenta(venta_id, payload);
       return data;
@@ -171,12 +162,28 @@ export function useVentas() {
     }
   }
 
-  // 9. Eliminar venta
+  // 9. Actualizar venta
+  async function updateVenta(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await repo.updateVenta(id, payload);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // 10. Eliminar venta
   async function deleteVenta(id) {
     loading.value = true;
     error.value = null;
     try {
-      await repo.delete(id);
+      const data = await repo.delete(id);
+      return data;
     } catch (e) {
       error.value = e;
       throw e;
@@ -194,6 +201,7 @@ export function useVentas() {
     cancelVenta,
     getVenta,
     loadVentas,
+    updateVenta,
     deleteVenta,
     loading,
     error,

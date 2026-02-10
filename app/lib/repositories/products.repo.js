@@ -26,6 +26,19 @@ export function createProductsRepo(supabase) {
       return data;
     },
 
+    async update(id, payload) {
+      const { data, error } = await supabase
+        .from("articulos")
+        .update(payload)
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    },
+
     async delete(id) {
       const { data, error } = await supabase
         .from("articulos")

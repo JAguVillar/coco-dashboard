@@ -44,6 +44,20 @@ export function useClients() {
     }
   }
 
+  async function updateClient(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.update(id, payload);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function deleteClient(id) {
     loading.value = true;
     error.value = null;
@@ -58,5 +72,5 @@ export function useClients() {
     }
   }
 
-  return { loadClients, createClient, deleteClient, loading, error };
+  return { loadClients, createClient, updateClient, deleteClient, loading, error };
 }

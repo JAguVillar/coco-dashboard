@@ -44,6 +44,20 @@ export function useProveedores() {
     }
   }
 
+  async function updateProveedor(id, payload) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const row = await repo.update(id, payload);
+      return row;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function deleteProveedor(id) {
     loading.value = true;
     error.value = null;
@@ -58,5 +72,5 @@ export function useProveedores() {
     }
   }
 
-  return { loadProveedores, createProveedor, deleteProveedor, loading, error };
+  return { loadProveedores, createProveedor, updateProveedor, deleteProveedor, loading, error };
 }
