@@ -1,10 +1,4 @@
 import { createVentasRepo } from "@/lib/repositories/ventas.repo";
-import {
-  normalizeClienteId,
-  createVentaPayload,
-  createVentaItemPayload,
-  createCompleteVentaPayload,
-} from "@/lib/services/ventas.service";
 
 export function useVentas() {
   const supabase = useSupabaseClient();
@@ -19,11 +13,22 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const payload = createVentaPayload({
-        cliente_id: normalizeClienteId(cliente_id),
+      // Normalizar cliente_id
+      const normalizedClienteId =
+        cliente_id == null
+          ? null
+          : typeof cliente_id === "object"
+            ? (cliente_id.value ?? null)
+            : cliente_id;
+
+      const payload = {
+        cliente_id: normalizedClienteId,
         vendedor_id: user.value?.id,
         notas,
-      });
+        subtotal: 0,
+        descuento: 0,
+        total: 0,
+      };
 
       const data = await repo.createVenta(payload);
       return data;
@@ -40,13 +45,18 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const payload = createVentaItemPayload({
+      const subtotal = cantidad * precio_unitario;
+      const total = subtotal - descuento;
+
+      const payload = {
         venta_id,
         articulo_id,
         cantidad,
         precio_unitario,
+        subtotal,
         descuento,
-      });
+        total,
+      };
 
       const data = await repo.addItem(payload);
       return data;
@@ -78,7 +88,8 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      await repo.deleteItem(item_id);
+      const data = await repo.deleteItem(item_id);
+      return data;
     } catch (e) {
       error.value = e;
       throw e;
@@ -92,11 +103,11 @@ export function useVentas() {
     loading.value = true;
     error.value = null;
     try {
-      const payload = createCompleteVentaPayload({
+      const payload = {
         metodo_pago_id,
         numero_comprobante,
         tipo_comprobante,
-      });
+      };
 
       const data = await repo.completeVenta(venta_id, payload);
       return data;

@@ -1,5 +1,3 @@
-import { mapDatabaseError } from "@/lib/utils/errors";
-
 export function createClientsRepo(supabase) {
   return {
     async list({ from, to } = {}) {
@@ -13,7 +11,7 @@ export function createClientsRepo(supabase) {
       }
 
       const { data, error, count } = await query;
-      if (error) throw mapDatabaseError(error);
+      if (error) throw error;
       return { data: data ?? [], count: count ?? 0 };
     },
 
@@ -24,8 +22,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error, { entity: "clients" });
-
+      if (error) throw error;
       return data;
     },
 
@@ -37,8 +34,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error, { entity: "clients" });
-
+      if (error) throw error;
       return data;
     },
 
@@ -50,8 +46,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error);
-
+      if (error) throw error;
       return data;
     },
   };
