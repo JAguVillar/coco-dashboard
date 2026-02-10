@@ -44,17 +44,13 @@ app/
 ├── lib/
 │   ├── mappers/
 │   │   └── scheduleX.mapper.js  # DB -> Schedule-X event mapping
-│   ├── repositories/        # Data access layer (Supabase queries)
-│   │   ├── categorias.repo.js
-│   │   ├── clients.repo.js
-│   │   ├── metodosPago.repo.js
-│   │   ├── products.repo.js
-│   │   ├── proveedores.repo.js
-│   │   └── ventas.repo.js
-│   ├── services/            # Business logic layer
-│   │   └── ventas.service.js  # Sales calculations and transformations
-│   └── utils/               # Shared utilities
-│       └── errors.js        # Centralized error handling
+│   └── repositories/        # Data access layer (Supabase queries)
+│       ├── categorias.repo.js
+│       ├── clients.repo.js
+│       ├── metodosPago.repo.js
+│       ├── products.repo.js
+│       ├── proveedores.repo.js
+│       └── ventas.repo.js
 ├── middleware/
 │   └── auth.global.js.js    # Auth middleware
 ├── pages/
@@ -71,30 +67,26 @@ app/
 
 ## Architecture Patterns
 
-The application follows a **4-layer architecture**:
+The application follows a **2-layer architecture**: simple and direct.
 
 ```
-Component → Composable → Service → Repository → Database
-   (UI)      (State)     (Logic)    (Data)
+Component → Composable → Repository → Database
+   (UI)      (State)       (Data)
 ```
 
 ### 1. Repository Layer (`app/lib/repositories/`)
 
-**Purpose**: Pure data access - talks only to Supabase, no business logic.
+**Purpose**: Data access - Supabase queries.
 
 Each repository:
 - Receives Supabase client as parameter via factory function
 - Returns object with async CRUD methods: `list()`, `create()`, `update()`, `delete()`
-- All `list()` methods support pagination via `{ from, to }` parameters
-- All `list()` methods return `{ data, count }` for consistency
-- All mutations (`create`, `update`, `delete`) return the affected row(s)
-- Throws mapped errors using centralized error utility
-- NO business logic (calculations, validations, transformations)
+- All `list()` methods return `{ data, count }` consistently
+- All mutations return the affected row(s)
+- Throws errors for composables to handle
 
 ```javascript
 // Example: app/lib/repositories/clients.repo.js
-import { mapDatabaseError } from "@/lib/utils/errors";
-
 export function createClientsRepo(supabase) {
   return {
     async list({ from, to } = {}) {
@@ -108,7 +100,7 @@ export function createClientsRepo(supabase) {
       }
 
       const { data, error, count } = await query;
-      if (error) throw mapDatabaseError(error);
+      if (error) throw error;
       return { data: data ?? [], count: count ?? 0 };
     },
 
@@ -119,7 +111,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error, { entity: "clients" });
+      if (error) throw error;
       return data;
     },
 
@@ -131,7 +123,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error, { entity: "clients" });
+      if (error) throw error;
       return data;
     },
 
@@ -143,7 +135,7 @@ export function createClientsRepo(supabase) {
         .select("*")
         .single();
 
-      if (error) throw mapDatabaseError(error);
+      if (error) throw error;
       return data;
     },
   };
@@ -152,76 +144,23 @@ export function createClientsRepo(supabase) {
 
 **Key Principles**:
 - ✅ Consistent return values (`{ data, count }` for lists, `data` for mutations)
-- ✅ Consistent error handling (use `mapDatabaseError()`)
 - ✅ Consistent operation names across all repos
-- ✅ Support pagination in all list methods
-- ❌ NO business logic (that goes in services)
-- ❌ NO UI concerns (that goes in composables)
+- ✅ Support pagination via `{ from, to }` parameters
+- ✅ Throw errors for composables to catch
 
 ---
 
-### 2. Service Layer (`app/lib/services/`)
+### 2. Composable Layer (`app/composables/`)
 
-**Purpose**: Business logic - calculations, transformations, validations.
+**Purpose**: UI state + business logic coordination.
 
-Service layer contains pure functions for:
-- Data transformations (normalization, formatting)
-- Calculations (totals, subtotals, discounts)
-- Business validations
-- Payload construction with business defaults
-- NO database access (use repositories)
-- NO UI state management (use composables)
-
-```javascript
-// Example: app/lib/services/ventas.service.js
-export function calculateItemTotals({ cantidad, precio_unitario, descuento = 0 }) {
-  const subtotal = cantidad * precio_unitario;
-  const total = subtotal - descuento;
-  return { subtotal, total };
-}
-
-export function createVentaItemPayload({
-  venta_id,
-  articulo_id,
-  cantidad,
-  precio_unitario,
-  descuento = 0,
-}) {
-  const { subtotal, total } = calculateItemTotals({ cantidad, precio_unitario, descuento });
-
-  return {
-    venta_id,
-    articulo_id,
-    cantidad,
-    precio_unitario,
-    subtotal,
-    descuento,
-    total,
-  };
-}
-```
-
-**Key Principles**:
-- ✅ Pure functions (no side effects)
-- ✅ Testable (easy to unit test)
-- ✅ Reusable across composables
-- ❌ NO database calls
-- ❌ NO reactive state
-
----
-
-### 3. Composable Layer (`app/composables/`)
-
-**Purpose**: UI state management and coordination.
-
-Vue composables wrap repositories/services and provide:
+Vue composables wrap repositories and provide:
 - Reactive `loading` and `error` refs for UI feedback
 - Async methods with try/catch/finally for error handling
 - Auto-injection of Supabase client via `useSupabaseClient()`
 - Pagination metadata (`page`, `pageSize`)
-- Coordinate between service layer (business logic) and repository (data access)
-- NO business logic (delegate to services)
-- NO direct database queries (delegate to repositories)
+- Business logic when needed (calculations, validations)
+- Coordinate with repository for data access
 
 ```javascript
 // Example: app/composables/useClients.js
@@ -313,34 +252,8 @@ const { loadClients, createClient, updateClient, deleteClient, loading, error } 
 - ✅ Always set `loading = true` at start, `false` in finally
 - ✅ Store errors in `error.value` then re-throw for components
 - ✅ Return pagination metadata from load methods
-- ❌ NO business logic (delegate to service layer)
+- ✅ Can include business logic (calculations, validations) when needed
 - ❌ NO direct Supabase calls (delegate to repositories)
-
----
-
-### 4. Error Handling (`app/lib/utils/errors.js`)
-
-Centralized error mapping utility for consistent, user-friendly error messages in Spanish (Argentina).
-
-**Features**:
-- Error code constants (`ErrorCodes`)
-- PostgreSQL error code mapping
-- User-friendly Spanish (Argentina) messages
-- Context-aware error transformation
-
-```javascript
-// Example usage in repositories
-import { mapDatabaseError } from "@/lib/utils/errors";
-
-if (error) throw mapDatabaseError(error, { entity: "clients" });
-```
-
-**Supported error codes**:
-- `CLIENT_PHONE_EXISTS` - Duplicate phone number
-- `UNIQUE_VIOLATION` - Generic unique constraint
-- `FOREIGN_KEY_VIOLATION` - Cannot delete (in use)
-- `PERMISSION_DENIED` - Auth/permission errors
-- And more (see `app/lib/utils/errors.js`)
 
 ---
 
@@ -473,11 +386,9 @@ const columns = computed(() => [
 ```
 
 ### Error Handling
-- **Repositories** throw mapped errors using `mapDatabaseError()` from `app/lib/utils/errors.js`
+- **Repositories** throw errors
 - **Composables** catch errors, store in `error.value` ref, then re-throw
 - **Components** handle errors with try/catch and display toast notifications via `useToast()`
-- All error messages are in Spanish (Argentina) for end users
-- See `app/lib/utils/errors.js` for error codes and messages
 
 ### WhatsApp Integration
 The calendar component includes WhatsApp Web integration for booking confirmations:
@@ -507,15 +418,16 @@ The calendar component includes WhatsApp Web integration for booking confirmatio
 
 ### Adding a New Entity (CRUD Page)
 
-Follow the 4-layer architecture:
+Follow the 2-layer architecture:
 
-1. **Repository Layer** - Create `app/lib/repositories/{entity}.repo.js`
+1. **Repository** - Create `app/lib/repositories/{entity}.repo.js`
    ```javascript
-   import { mapDatabaseError } from "@/lib/utils/errors";
-
    export function createEntityRepo(supabase) {
      return {
-       async list({ from, to } = {}) { /* ... */ },
+       async list({ from, to } = {}) {
+         // Query with pagination
+         // Return { data, count }
+       },
        async create(payload) { /* ... */ },
        async update(id, payload) { /* ... */ },
        async delete(id) { /* ... */ },
@@ -523,14 +435,7 @@ Follow the 4-layer architecture:
    }
    ```
 
-2. **Service Layer** (optional) - Create `app/lib/services/{entity}.service.js` if business logic is needed
-   ```javascript
-   // Only if you need calculations, transformations, or validations
-   export function calculateEntityTotal(params) { /* ... */ }
-   export function createEntityPayload(params) { /* ... */ }
-   ```
-
-3. **Composable Layer** - Create `app/composables/use{Entity}.js`
+2. **Composable** - Create `app/composables/use{Entity}.js`
    ```javascript
    import { createEntityRepo } from "@/lib/repositories/{entity}.repo";
 
@@ -540,7 +445,9 @@ Follow the 4-layer architecture:
      const loading = ref(false);
      const error = ref(null);
 
-     async function loadEntities({ page = 1, pageSize = 10 } = {}) { /* ... */ }
+     async function loadEntities({ page = 1, pageSize = 10 } = {}) {
+       // Pagination logic + business logic if needed
+     }
      async function createEntity(payload) { /* ... */ }
      async function updateEntity(id, payload) { /* ... */ }
      async function deleteEntity(id) { /* ... */ }
@@ -549,37 +456,28 @@ Follow the 4-layer architecture:
    }
    ```
 
-4. **Component Layer** - Create page and modals
+3. **Components** - Create page and modals
    - Page: `app/pages/{entity}.vue`
    - Create modal: `app/components/{entity}/{Entity}CreateModal.vue`
    - Edit modal: `app/components/{entity}/{Entity}EditModal.vue`
 
-5. **Navigation** - Add link in `app/layouts/default.vue`
+4. **Navigation** - Add link in `app/layouts/default.vue`
 
-### Repository Best Practices
+### Best Practices
 
-- ✅ Always use `mapDatabaseError()` for error handling
+**Repositories**:
 - ✅ All `list()` methods return `{ data, count }`
 - ✅ All mutations return the affected row(s)
 - ✅ Support `{ from, to }` pagination parameters
-- ✅ NO business logic in repositories
+- ✅ Throw errors for composables to catch
 
-### Service Layer Best Practices
-
-- ✅ Use pure functions (no side effects)
-- ✅ Keep functions small and focused
-- ✅ Export individual functions (not a factory)
-- ❌ NO database access
-- ❌ NO reactive state
-
-### Composable Best Practices
-
+**Composables**:
 - ✅ Consistent try/catch/finally pattern
 - ✅ Set `loading = true` at start, `false` in finally
 - ✅ Store errors in `error.value` then re-throw
 - ✅ Add pagination metadata to load methods
-- ❌ NO business logic (delegate to services)
-- ❌ NO direct Supabase calls (delegate to repositories)
+- ✅ Include business logic when needed
+- ❌ NO direct Supabase calls (use repos)
 
 ### Adding a New Booking Type
 Insert into `turnos_types` table with: slug, name, color, icon
