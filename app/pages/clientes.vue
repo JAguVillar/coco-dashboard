@@ -1,5 +1,5 @@
 <script setup>
-import { h, resolveComponent, ref, computed, onMounted } from "vue";
+import { h, resolveComponent, ref, computed } from "vue";
 
 const UButton = resolveComponent("UButton");
 
@@ -7,6 +7,9 @@ const { loadClients, deleteClient } = useClients();
 
 const loading = ref(false);
 const rows = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 const openCreate = ref(false);
 
 const {
@@ -30,8 +33,17 @@ function getItemName(item) {
   );
 }
 
-function onEdit(client) {
+function onEdit(_client) {
   // TODO: implementar edición
+}
+
+function onChangePage(p) {
+  page.value = p;
+}
+
+function onChangePageSize(s) {
+  pageSize.value = Number(s);
+  page.value = 1;
 }
 
 const columns = computed(() => [
@@ -75,14 +87,25 @@ const columns = computed(() => [
 async function getClients() {
   loading.value = true;
   try {
-    const clients = await loadClients();
-    rows.value = clients ?? [];
+    const res = await loadClients({
+      page: page.value,
+      pageSize: pageSize.value,
+    });
+
+    rows.value = res.data;
+    total.value = res.count;
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(getClients);
+watch(
+  [page, pageSize],
+  () => {
+    getClients();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -100,7 +123,17 @@ onMounted(getClients);
         </div>
       </div>
 
-      <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+      <BaseTable
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+        show-pagination
+        :page="page"
+        :page-size="pageSize"
+        :total="total"
+        @update:page="onChangePage"
+        @update:page-size="onChangePageSize"
+      />
 
       <ConfirmDeleteModal
         v-model:open="openConfirmDelete"

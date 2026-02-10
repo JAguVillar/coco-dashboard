@@ -1,12 +1,18 @@
 export function createClientsRepo(supabase) {
   return {
-    async list() {
-      const { data, error } = await supabase
+    async list({ from, to } = {}) {
+      let query = supabase
         .from("clients")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("full_name");
+
+      if (from !== undefined && to !== undefined) {
+        query = query.range(from, to);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data ?? [];
+      return { data: data ?? [], count: count ?? 0 };
     },
 
     async create(payload) {

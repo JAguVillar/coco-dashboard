@@ -1,446 +1,238 @@
-<!-- components/ventas/VentaCreateModal.vue -->
 <script setup>
-import { useToast } from "#imports";
+import { h, resolveComponent, ref, computed, onMounted } from "vue";
+import VentasDetailModal from "~/components/ventas/VentasDetailModal.vue";
 
-const emit = defineEmits(["close", "created"]);
+const UButton = resolveComponent("UButton");
+const USwitch = resolveComponent("USwitch");
+const UBadge = resolveComponent("UBadge");
 
-const { crearVenta, agregarItem, getVenta, completarVenta, cancelarVenta } =
-  useVentas();
-const { loadClients } = useClients();
-const { loadProducts } = useProducts();
+const { rows, loading, setRows } = useVentasListState();
+const { deleteVenta, loadVentas } = useVentas();
 
-const toast = useToast();
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
-// Estado
-const ventaActual = ref(null);
-const items = ref([]);
-const clientes = ref([]);
-const articulos = ref([]);
-const loading = ref(false);
-const submitting = ref(false);
+const openCreate = ref(false);
+const openDetails = ref(false);
+const ventaSeleccionada = ref(null);
+const search = ref("");
 
-// Form para seleccionar cliente
-const clienteSeleccionado = ref(null);
-const iniciandoVenta = ref(false);
-
-// Form para nuevo item
-const nuevoItem = reactive({
-  articulo_id: null,
-  cantidad: 1,
-  descuento: 0,
+const {
+  open: openConfirmDelete,
+  itemToDelete,
+  deleting,
+  requestDelete,
+  cancel: cancelDelete,
+  confirm: confirmDelete,
+} = useDeleteConfirmation({
+  deleteFn: deleteVenta,
+  onSuccess: getVentas,
+  entityName: "Venta",
 });
 
-const articuloSearch = ref("");
+function getItemName(item) {
+  return item?.nombre || "esta venta";
+}
 
-// Computed
-const articulosDisponibles = computed(() =>
-  articulos.value.filter((a) => a.stock_actual > 0 && a.activo),
-);
+// function onEdit(venta) {
+//   // TODO: implementar edición
+// }
 
-const articulosItems = computed(() =>
-  articulosDisponibles.value.map((a) => ({
-    label: `${a.nombre} - $${a.precio_venta_por_unidad} (Stock: ${a.stock_actual} ${a.unidad_medida})`,
-    value: a.id,
-  })),
-);
+function formatPrice(price) {
+  if (!price) return "-";
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(price);
+}
 
-const clientesItems = computed(() => [
-  { label: "Sin cliente / Mostrador", value: null },
-  ...clientes.value.map((c) => ({
-    label: c.full_name,
-    value: c.id,
-  })),
+function onView(venta) {
+  ventaSeleccionada.value = venta;
+  openDetails.value = true;
+}
+
+function closeDetails() {
+  openDetails.value = false;
+  ventaSeleccionada.value = null;
+}
+
+function onChangePage(p) {
+  page.value = p;
+}
+
+function onChangePageSize(s) {
+  pageSize.value = Number(s);
+  page.value = 1;
+}
+
+const formatFecha = (iso) => {
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(new Date(iso));
+};
+
+const columns = computed(() => [
+  {
+    accessorKey: "created_at",
+    header: "Fecha",
+    cell: ({ row }) => formatFecha(row.getValue("created_at")),
+  },
+  {
+    accessorKey: "clients",
+    header: "Cliente",
+    cell: ({ row }) => {
+      const client = row.original.clients;
+      return client?.full_name ?? "Mostrador";
+    },
+  },
+  {
+    accessorKey: "total",
+    header: "Total",
+    cell: ({ row }) =>
+      h("span", { class: "font-medium" }, formatPrice(row.getValue("total"))),
+  },
+  {
+    accessorKey: "venta_estados",
+    header: "Estado",
+    cell: ({ row }) => {
+      const estado = row.getValue("venta_estados");
+      return estado
+        ? h(
+            UBadge,
+            { variant: "subtle", color: estado.color },
+            () => estado.nombre,
+          )
+        : h("span", { class: "text-gray-400" }, "-");
+    },
+  },
+  {
+    accessorKey: "metodos_pago",
+    header: "Pago",
+    cell: ({ row }) => {
+      const pagado = row.getValue("metodos_pago");
+      return pagado
+        ? h(
+            UBadge,
+            { variant: "subtle", color: "gray", icon: pagado.icon },
+            () => pagado.nombre,
+          )
+        : h("span", { class: "text-gray-400" }, "-");
+    },
+  },
+  {
+    accessorKey: "actions",
+    header: "",
+    cell: ({ row }) => {
+      const venta = row.original;
+      return h("div", { class: "flex items-center justify-end gap-1" }, [
+        h(UButton, {
+          icon: "i-lucide-eye",
+          size: "md",
+          variant: "ghost",
+          color: "info",
+          onClick: () => onView(venta),
+          disabled: venta.venta_estados.codigo === "cancelada",
+        }),
+        h(UButton, {
+          icon: "i-lucide-pencil",
+          size: "md",
+          variant: "ghost",
+          onClick: () => onEdit(venta),
+        }),
+        h(UButton, {
+          icon: "i-lucide-trash",
+          size: "md",
+          variant: "ghost",
+          color: "error",
+          onClick: () => requestDelete(venta),
+        }),
+      ]);
+    },
+  },
 ]);
 
-const articuloSeleccionado = computed(() => {
-  if (!nuevoItem.articulo_id) return null;
-  return articulos.value.find((a) => a.id === nuevoItem.articulo_id);
-});
-
-const subtotalNuevoItem = computed(() => {
-  if (!articuloSeleccionado.value) return 0;
-  return (
-    nuevoItem.cantidad * articuloSeleccionado.value.precio_venta_por_unidad
-  );
-});
-
-const totalNuevoItem = computed(() => {
-  return Math.max(0, subtotalNuevoItem.value - nuevoItem.descuento);
-});
-
-// Métodos
-const iniciarVenta = async () => {
-  if (iniciandoVenta.value) return;
-  iniciandoVenta.value = true;
-
-  try {
-    const venta = await crearVenta({
-      cliente_id: clienteSeleccionado.value,
-      metodo_pago: null,
-      notas: null,
-    });
-
-    ventaActual.value = venta;
-    items.value = [];
-
-    toast.add({
-      title: "Venta iniciada",
-      color: "success",
-    });
-  } catch (error) {
-    console.error(error);
-    toast.add({
-      title: "Error",
-      description: "No se pudo crear la venta",
-      color: "error",
-    });
-  } finally {
-    iniciandoVenta.value = false;
-  }
-};
-
-const addItem = async () => {
-  if (!ventaActual.value || submitting.value) return;
-  if (!nuevoItem.articulo_id || !nuevoItem.cantidad) return;
-
-  submitting.value = true;
-
-  try {
-    const articulo = articuloSeleccionado.value;
-
-    // Verificar stock
-    if (articulo.stock_actual < nuevoItem.cantidad) {
-      toast.add({
-        title: "Stock insuficiente",
-        description: `Solo hay ${articulo.stock_actual} ${articulo.unidad_medida} disponibles`,
-        color: "error",
-      });
-      return;
-    }
-
-    const itemCreado = await agregarItem({
-      venta_id: ventaActual.value.id,
-      articulo_id: nuevoItem.articulo_id,
-      cantidad: nuevoItem.cantidad,
-      precio_unitario: articulo.precio_venta_por_unidad,
-      descuento: nuevoItem.descuento,
-    });
-
-    // Agregar a la lista local
-    items.value.push(itemCreado);
-
-    // Actualizar venta
-    await cargarVenta();
-
-    // Actualizar stock del artículo en la lista
-    const articuloIndex = articulos.value.findIndex(
-      (a) => a.id === articulo.id,
-    );
-    if (articuloIndex !== -1) {
-      articulos.value[articuloIndex].stock_actual -= nuevoItem.cantidad;
-    }
-
-    // Resetear form
-    nuevoItem.articulo_id = null;
-    nuevoItem.cantidad = 1;
-    nuevoItem.descuento = 0;
-
-    toast.add({
-      title: "Item agregado",
-      color: "success",
-    });
-  } catch (error) {
-    console.error(error);
-    toast.add({
-      title: "Error",
-      description: error.message || "No se pudo agregar el item",
-      color: "error",
-    });
-  } finally {
-    submitting.value = false;
-  }
-};
-
-const finalizarVenta = async () => {
-  if (!ventaActual.value || submitting.value) return;
-
-  if (items.value.length === 0) {
-    toast.add({
-      title: "Venta vacía",
-      description: "Agregá al menos un item",
-      color: "error",
-    });
-    return;
-  }
-
-  submitting.value = true;
-
-  try {
-    await completarVenta(ventaActual.value.id, {
-      metodo_pago: "efectivo",
-      numero_comprobante: null,
-      tipo_comprobante: "ticket",
-    });
-
-    toast.add({
-      title: "Venta completada",
-      description: `Total: $${ventaActual.value.total?.toFixed(2)}`,
-      color: "success",
-    });
-
-    emit("created", ventaActual.value);
-    emit("close");
-  } catch (error) {
-    console.error(error);
-    toast.add({
-      title: "Error",
-      description: "No se pudo completar la venta",
-      color: "error",
-    });
-  } finally {
-    submitting.value = false;
-  }
-};
-
-const cancelar = async () => {
-  if (!ventaActual.value) {
-    emit("close");
-    return;
-  }
-
-  if (items.value.length > 0) {
-    // Confirmar cancelación si hay items
-    if (!confirm("¿Cancelar la venta? Se restaurará el stock.")) {
-      return;
-    }
-  }
-
-  try {
-    if (items.value.length > 0) {
-      await cancelarVenta(ventaActual.value.id);
-      toast.add({
-        title: "Venta cancelada",
-        description: "Se restauró el stock",
-        color: "warning",
-      });
-    }
-  } catch (error) {
-    console.error(error);
-  } finally {
-    emit("close");
-  }
-};
-
-const cargarVenta = async () => {
-  if (!ventaActual.value) return;
-  ventaActual.value = await getVenta(ventaActual.value.id);
-};
-
-// Cargar datos iniciales
-onMounted(async () => {
+async function getVentas() {
   loading.value = true;
   try {
-    clientes.value = await loadClients();
-    articulos.value = await loadProducts();
-  } catch (error) {
-    console.error(error);
-    toast.add({
-      title: "Error",
-      description: "No se pudieron cargar los datos",
-      color: "error",
+    const res = await loadVentas({
+      page: page.value,
+      pageSize: pageSize.value,
+      search: search.value,
+      // desde, hasta si los tenés
     });
+
+    setRows(res.data);
+    total.value = res.count;
   } finally {
     loading.value = false;
   }
+}
+
+let searchTimeout = null;
+
+watch(
+  [page, pageSize],
+  () => {
+    getVentas();
+  },
+  { immediate: true },
+);
+watch(search, () => {
+  page.value = 1;
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    getVentas();
+  }, 300);
 });
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Nueva venta</h3>
-        <UButton
-          icon="i-lucide-x"
-          variant="ghost"
-          color="neutral"
-          :disabled="submitting"
-          @click="cancelar"
+  <div>
+    <div class="flex justify-between py-3.5 border-b border-accented">
+      <div class="flex items-center gap-2">
+        <UInput
+          v-model="search"
+          class="w-72 lg:w-80"
+          placeholder="Buscar por cliente o comprobante..."
+          icon="i-lucide-search"
+          variant="soft"
+          clearable
         />
-      </div>
-    </template>
-
-    <div v-if="loading" class="flex justify-center py-8">
-      <UIcon name="i-lucide-loader-2" class="animate-spin w-8 h-8" />
-    </div>
-
-    <!-- Paso 1: Seleccionar cliente -->
-    <div v-else-if="!ventaActual" class="space-y-4">
-      <UFormField label="Cliente" name="cliente">
-        <USelectMenu
-          v-model="clienteSeleccionado"
-          :options="clientesItems"
-          placeholder="Seleccionar cliente..."
-          searchable
-          class="w-full"
-        />
-      </UFormField>
-
-      <div class="flex justify-end gap-2">
-        <UButton variant="outline" color="neutral" @click="emit('close')">
-          Cancelar
-        </UButton>
-        <UButton @click="iniciarVenta" :loading="iniciandoVenta">
-          Continuar
-        </UButton>
+        <!-- futuro: filtros acá -->
       </div>
     </div>
 
-    <!-- Paso 2: Agregar items -->
-    <div v-else class="space-y-4">
-      <!-- Info de la venta -->
-      <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-        <div class="flex justify-between items-center mb-2">
-          <div>
-            <p class="text-sm text-gray-500">Cliente</p>
-            <p class="font-medium">
-              {{ ventaActual.clients?.full_name || "Sin cliente / Mostrador" }}
-            </p>
-          </div>
-          <UBadge color="orange">Pendiente</UBadge>
-        </div>
-        <div class="text-right">
-          <p class="text-2xl font-bold">
-            ${{ ventaActual.total?.toFixed(2) || "0.00" }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Form para agregar item -->
-      <div
-        class="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 space-y-4"
-      >
-        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">
-          Agregar producto
-        </h4>
-
-        <UFormField label="Artículo" name="articulo_id" required>
-          <USelectMenu
-            v-model="nuevoItem.articulo_id"
-            :options="articulosItems"
-            placeholder="Buscar producto..."
-            searchable
-            :search-attributes="['label']"
-            class="w-full"
-          >
-            <template #search>
-              <UInput
-                v-model="articuloSearch"
-                placeholder="Buscar por nombre..."
-                class="w-full"
-              />
-            </template>
-          </USelectMenu>
-        </UFormField>
-
-        <div class="grid grid-cols-3 gap-4">
-          <UFormField label="Cantidad" name="cantidad" required>
-            <UInput
-              v-model="nuevoItem.cantidad"
-              type="number"
-              step="0.001"
-              min="0.001"
-              :disabled="!nuevoItem.articulo_id"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Descuento ($)" name="descuento">
-            <UInput
-              v-model="nuevoItem.descuento"
-              type="number"
-              step="0.01"
-              min="0"
-              :disabled="!nuevoItem.articulo_id"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Total" name="total">
-            <UInput
-              :model-value="totalNuevoItem.toFixed(2)"
-              disabled
-              class="w-full"
-            />
-          </UFormField>
-        </div>
-
-        <UButton
-          @click="addItem"
-          :disabled="!nuevoItem.articulo_id || !nuevoItem.cantidad"
-          :loading="submitting"
-          block
-        >
-          Agregar producto
-        </UButton>
-      </div>
-
-      <!-- Lista de items -->
-      <div v-if="items.length > 0" class="space-y-2">
-        <h4 class="font-medium text-sm text-gray-700 dark:text-gray-300">
-          Productos en la venta
-        </h4>
-
-        <div
-          v-for="item in items"
-          :key="item.id"
-          class="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-800 rounded-lg"
-        >
-          <div class="flex-1">
-            <p class="font-medium">{{ item.articulos.nombre }}</p>
-            <p class="text-sm text-gray-500">
-              {{ item.cantidad }} {{ item.articulos.unidad_medida }} × ${{
-                item.precio_unitario?.toFixed(2)
-              }}
-              <span v-if="item.descuento > 0" class="text-orange-500">
-                (Desc: -${{ item.descuento?.toFixed(2) }})
-              </span>
-            </p>
-          </div>
-          <div class="text-right">
-            <p class="font-semibold text-lg">${{ item.total?.toFixed(2) }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="text-center py-8 text-gray-500">
-        <UIcon
-          name="i-lucide-shopping-cart"
-          class="w-12 h-12 mx-auto mb-2 opacity-50"
+    <BaseTable
+      :rows="rows"
+      :columns="columns"
+      :loading="loading"
+      show-pagination
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      @update:page="onChangePage"
+      @update:pageSize="onChangePageSize"
+    />
+    <UModal v-model:open="openDetails">
+      <template #content>
+        <VentasDetailModal
+          close-icon="i-lucide-arrow-right"
+          :venta="ventaSeleccionada"
+          @close="closeDetails"
+          @updated="getVentas"
         />
-        <p>Agregá productos a la venta</p>
-      </div>
-    </div>
-
-    <template v-if="ventaActual" #footer>
-      <div class="flex justify-between gap-2">
-        <UButton
-          variant="outline"
-          color="neutral"
-          :disabled="submitting"
-          @click="cancelar"
-        >
-          Cancelar venta
-        </UButton>
-        <UButton
-          color="primary"
-          :disabled="items.length === 0"
-          :loading="submitting"
-          @click="finalizarVenta"
-        >
-          Finalizar venta (${{ ventaActual.total?.toFixed(2) || "0.00" }})
-        </UButton>
-      </div>
-    </template>
-  </UCard>
+      </template>
+    </UModal>
+    <ConfirmDeleteModal
+      v-model:open="openConfirmDelete"
+      title="Eliminar venta"
+      :item-name="getItemName(itemToDelete)"
+      :deleting="deleting"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
+  </div>
 </template>

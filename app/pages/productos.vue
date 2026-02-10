@@ -1,5 +1,5 @@
 <script setup>
-import { h, resolveComponent, ref, computed, onMounted } from "vue";
+import { h, resolveComponent, ref, computed } from "vue";
 import ProductoCreateModal from "~/components/productos/ProductoCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
@@ -10,6 +10,9 @@ const { loadProducts, deleteProduct } = useProducts();
 
 const loading = ref(false);
 const rows = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 const openCreate = ref(false);
 
 const {
@@ -29,8 +32,17 @@ function getItemName(item) {
   return item?.nombre || "este artículo";
 }
 
-function onEdit(articulo) {
+function onEdit(_articulo) {
   // TODO: implementar edición
+}
+
+function onChangePage(p) {
+  page.value = p;
+}
+
+function onChangePageSize(s) {
+  pageSize.value = Number(s);
+  page.value = 1;
 }
 
 function formatPrice(price) {
@@ -156,14 +168,25 @@ const columns = computed(() => [
 async function getProductos() {
   loading.value = true;
   try {
-    const articulos = await loadProducts();
-    rows.value = articulos ?? [];
+    const res = await loadProducts({
+      page: page.value,
+      pageSize: pageSize.value,
+    });
+
+    rows.value = res.data;
+    total.value = res.count;
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(getProductos);
+watch(
+  [page, pageSize],
+  () => {
+    getProductos();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -196,7 +219,17 @@ onMounted(getProductos);
       </UModal>
     </div>
 
-    <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+    <BaseTable
+      :rows="rows"
+      :columns="columns"
+      :loading="loading"
+      show-pagination
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      @update:page="onChangePage"
+      @update:page-size="onChangePageSize"
+    />
 
     <ConfirmDeleteModal
       v-model:open="openConfirmDelete"

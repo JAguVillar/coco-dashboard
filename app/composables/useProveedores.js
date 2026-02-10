@@ -7,12 +7,21 @@ export function useProveedores() {
   const loading = ref(false);
   const error = ref(null);
 
-  async function loadProveedores() {
+  async function loadProveedores({ page = 1, pageSize = 10 } = {}) {
     loading.value = true;
     error.value = null;
     try {
-      const rows = await repo.list();
-      return rows;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, count } = await repo.list({ from, to });
+      
+      return {
+        data: data ?? [],
+        count: count ?? 0,
+        page,
+        pageSize,
+      };
     } catch (e) {
       error.value = e;
       throw e;

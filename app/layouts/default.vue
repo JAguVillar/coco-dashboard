@@ -113,16 +113,6 @@ watch(
           </template>
 
           <template #right>
-            <!-- <UModal v-model:open="openCreate">
-              <UButton
-                icon="i-lucide-receipt"
-                label="Nueva venta"
-                color="primary"
-              />
-              <template #content>
-                <VentaCreateModal @close="openCreate = false" />
-              </template>
-            </UModal> -->
             <USlideover v-model:open="ventaSlideoverOpen" side="right">
               <!-- Trigger (slot default) -->
               <UButton

@@ -4,8 +4,13 @@ import { useToast } from "#imports";
 
 const emit = defineEmits(["close", "created"]);
 
-const { crearVenta, agregarItem, getVenta, completarVenta, cancelarVenta } =
-  useVentas();
+const {
+  createVenta,
+  addItem: addItemToVenta,
+  getVenta,
+  completeVenta,
+  cancelVenta,
+} = useVentas();
 const { loadClients } = useClients();
 const { loadProducts } = useProducts();
 
@@ -74,7 +79,7 @@ const iniciarVenta = async () => {
   iniciandoVenta.value = true;
 
   try {
-    const venta = await crearVenta({
+    const venta = await createVenta({
       cliente_id: clienteSeleccionado.value,
       metodo_pago: null,
       notas: null,
@@ -118,7 +123,7 @@ const addItem = async () => {
       return;
     }
 
-    const itemCreado = await agregarItem({
+    const itemCreado = await addItemToVenta({
       venta_id: ventaActual.value.id,
       articulo_id: nuevoItem.articulo_id,
       cantidad: nuevoItem.cantidad,
@@ -176,7 +181,7 @@ const finalizarVenta = async () => {
   submitting.value = true;
 
   try {
-    await completarVenta(ventaActual.value.id, {
+    await completeVenta(ventaActual.value.id, {
       metodo_pago: "efectivo",
       numero_comprobante: null,
       tipo_comprobante: "ticket",
@@ -217,7 +222,7 @@ const cancelar = async () => {
 
   try {
     if (items.value.length > 0) {
-      await cancelarVenta(ventaActual.value.id);
+      await cancelVenta(ventaActual.value.id);
       toast.add({
         title: "Venta cancelada",
         description: "Se restauró el stock",

@@ -1,5 +1,5 @@
 <script setup>
-import { h, resolveComponent, ref, computed, onMounted } from "vue";
+import { h, resolveComponent, ref, computed } from "vue";
 import CategoriaCreateModal from "~/components/categorias/CategoriaCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
@@ -8,6 +8,9 @@ const { loadCategorias, deleteCategoria } = useCategorias();
 
 const loading = ref(false);
 const rows = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 const openCreate = ref(false);
 
 const {
@@ -27,8 +30,17 @@ function getItemName(item) {
   return item?.nombre || "esta categoría";
 }
 
-function onEdit(categoria) {
+function onEdit(_categoria) {
   // TODO: implementar edición
+}
+
+function onChangePage(p) {
+  page.value = p;
+}
+
+function onChangePageSize(s) {
+  pageSize.value = Number(s);
+  page.value = 1;
 }
 
 const columns = computed(() => [
@@ -76,14 +88,25 @@ const columns = computed(() => [
 async function getCategorias() {
   loading.value = true;
   try {
-    const categorias = await loadCategorias();
-    rows.value = categorias ?? [];
+    const res = await loadCategorias({
+      page: page.value,
+      pageSize: pageSize.value,
+    });
+
+    rows.value = res.data;
+    total.value = res.count;
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(getCategorias);
+watch(
+  [page, pageSize],
+  () => {
+    getCategorias();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -101,7 +124,17 @@ onMounted(getCategorias);
         </div>
       </div>
 
-      <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+      <BaseTable
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+        show-pagination
+        :page="page"
+        :page-size="pageSize"
+        :total="total"
+        @update:page="onChangePage"
+        @update:page-size="onChangePageSize"
+      />
 
       <ConfirmDeleteModal
         v-model:open="openConfirmDelete"

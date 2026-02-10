@@ -1,27 +1,18 @@
-import { createClientsRepo } from "@/lib/repositories/clients.repo";
+import { createMetodosPagoRepo } from "@/lib/repositories/metodosPago.repo";
 
-export function useClients() {
+export function useMetodosPago() {
   const supabase = useSupabaseClient();
-  const repo = createClientsRepo(supabase);
+  const repo = createMetodosPagoRepo(supabase);
 
   const loading = ref(false);
   const error = ref(null);
 
-  async function loadClients({ page = 1, pageSize = 10 } = {}) {
+  async function loadMetodosPago() {
     loading.value = true;
     error.value = null;
     try {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, count } = await repo.list({ from, to });
-      
-      return {
-        data: data ?? [],
-        count: count ?? 0,
-        page,
-        pageSize,
-      };
+      const rows = await repo.list();
+      return rows;
     } catch (e) {
       error.value = e;
       throw e;
@@ -30,7 +21,7 @@ export function useClients() {
     }
   }
 
-  async function createClient(payload) {
+  async function createMetodoPago(payload) {
     loading.value = true;
     error.value = null;
     try {
@@ -44,7 +35,7 @@ export function useClients() {
     }
   }
 
-  async function deleteClient(id) {
+  async function deleteMetodoPago(id) {
     loading.value = true;
     error.value = null;
     try {
@@ -58,5 +49,5 @@ export function useClients() {
     }
   }
 
-  return { loadClients, createClient, deleteClient, loading, error };
+  return { loadMetodosPago, createMetodoPago, deleteMetodoPago, loading, error };
 }

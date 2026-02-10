@@ -1,43 +1,53 @@
-// composables/useVentas.js
-export const useVentas = () => {
+import { createVentasRepo } from "@/lib/repositories/ventas.repo";
+
+export function useVentas() {
   const supabase = useSupabaseClient();
   const user = useSupabaseUser();
+  const repo = createVentasRepo(supabase);
+
+  const loading = ref(false);
+  const error = ref(null);
 
   // 1. Crear una nueva venta
-  const crearVenta = async ({ cliente_id, metodo_pago, notas }) => {
-    const normalizedClienteId =
-    cliente_id == null
-      ? null
-      : typeof cliente_id === "object"
-        ? (cliente_id.value ?? null)
-        : cliente_id
-    const { data, error } = await supabase
-      .from('ventas')
-      .insert({
-      cliente_id: normalizedClienteId,
+  async function createVenta({ cliente_id, metodo_pago, notas }) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const normalizedClienteId =
+        cliente_id == null
+          ? null
+          : typeof cliente_id === "object"
+            ? (cliente_id.value ?? null)
+            : cliente_id;
+
+      const payload = {
+        cliente_id: normalizedClienteId,
         vendedor_id: user.value?.id,
-        metodo_pago,
         notas,
-        estado: 'pendiente',
         subtotal: 0,
         descuento: 0,
         total: 0,
-      })
-      .select()
-      .single();
+      };
 
-    if (error) throw error;
-    return data;
-  };
+      const data = await repo.createVenta(payload);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 2. Agregar item a la venta
-  const agregarItem = async ({ venta_id, articulo_id, cantidad, precio_unitario, descuento = 0 }) => {
-    const subtotal = cantidad * precio_unitario;
-    const total = subtotal - descuento;
+  async function addItem({ venta_id, articulo_id, cantidad, precio_unitario, descuento = 0 }) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const subtotal = cantidad * precio_unitario;
+      const total = subtotal - descuento;
 
-    const { data, error } = await supabase
-      .from('venta_items')
-      .insert({
+      const payload = {
         venta_id,
         articulo_id,
         cantidad,
@@ -45,151 +55,147 @@ export const useVentas = () => {
         subtotal,
         descuento,
         total,
-      })
-      .select()
-      .single();
+      };
 
-    if (error) throw error;
-    return data;
-  };
+      const data = await repo.addItem(payload);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 3. Obtener items de una venta
-  const getItemsVenta = async (venta_id) => {
-    const { data, error } = await supabase
-      .from('venta_items')
-      .select(`
-        *,
-        articulos (
-          id,
-          nombre,
-          codigo,
-          unidad_medida,
-          stock_actual
-        )
-      `)
-      .eq('venta_id', venta_id)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data;
-  };
+  async function getItemsVenta(venta_id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await repo.getItemsVenta(venta_id);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 4. Eliminar item de la venta
-  const eliminarItem = async (item_id) => {
-    const { error } = await supabase
-      .from('venta_items')
-      .delete()
-      .eq('id', item_id);
-
-    if (error) throw error;
-  };
+  async function deleteItem(item_id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await repo.deleteItem(item_id);
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 5. Completar venta
-  const completarVenta = async (venta_id, { metodo_pago, numero_comprobante, tipo_comprobante }) => {
-    const { data, error } = await supabase
-      .from('ventas')
-      .update({
-        estado: 'completada',
-        metodo_pago,
+  async function completeVenta(venta_id, { metodo_pago_id, numero_comprobante, tipo_comprobante }) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const payload = {
+        metodo_pago_id,
         numero_comprobante,
         tipo_comprobante,
-      })
-      .eq('id', venta_id)
-      .select()
-      .single();
+      };
 
-    if (error) throw error;
-    return data;
-  };
+      const data = await repo.completeVenta(venta_id, payload);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 6. Cancelar venta (restaura stock automáticamente con el trigger)
-  const cancelarVenta = async (venta_id, motivo) => {
-    const { data, error } = await supabase
-      .from('ventas')
-      .update({
-        estado: 'cancelada',
-        notas: motivo,
-      })
-      .eq('id', venta_id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  };
+  async function cancelVenta(venta_id, motivo) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await repo.cancelVenta(venta_id, motivo);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 7. Obtener venta con sus items
-  const getVenta = async (venta_id) => {
-    const { data, error } = await supabase
-      .from('ventas')
-      .select(`
-        *,
-        clients (
-          id,
-          full_name,
-          phone
-        ),
-        profiles (
-          id,
-          full_name
-        ),
-        venta_items (
-          *,
-          articulos (
-            id,
-            nombre,
-            codigo,
-            unidad_medida
-          )
-        )
-      `)
-      .eq('id', venta_id)
-      .single();
-
-    if (error) throw error;
-    return data;
-  };
+  async function getVenta(venta_id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await repo.getVenta(venta_id);
+      return data;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
 
   // 8. Listar ventas
-  const loadVentas = async ({ estado, desde, hasta, limit = 50 }) => {
-    let query = supabase
-      .from('ventas')
-      .select(`
-        *,
-        clients (
-          id,
-          full_name
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+  async function loadVentas({ desde, hasta, search, page = 1, pageSize = 10 } = {}) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
 
-    if (estado) {
-      query = query.eq('estado', estado);
+      const { data, count } = await repo.list({ from, to, desde, hasta, search });
+
+      return {
+        data: data ?? [],
+        count: count ?? 0,
+        page,
+        pageSize,
+      };
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
     }
+  }
 
-    if (desde) {
-      query = query.gte('created_at', desde);
+  // 9. Eliminar venta
+  async function deleteVenta(id) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await repo.delete(id);
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
     }
-
-    if (hasta) {
-      query = query.lte('created_at', hasta);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return data;
-  };
+  }
 
   return {
-    crearVenta,
-    agregarItem,
+    createVenta,
+    addItem,
     getItemsVenta,
-    eliminarItem,
-    completarVenta,
-    cancelarVenta,
+    deleteItem,
+    completeVenta,
+    cancelVenta,
     getVenta,
     loadVentas,
+    deleteVenta,
+    loading,
+    error,
   };
-};
+}

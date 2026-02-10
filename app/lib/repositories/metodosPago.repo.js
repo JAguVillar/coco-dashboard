@@ -1,22 +1,16 @@
-export function createCategoriasRepo(supabase) {
+export function createMetodosPagoRepo(supabase) {
   return {
-    async list({ from, to } = {}) {
-      let query = supabase
-        .from("categorias")
-        .select("*", { count: "exact" });
-
-      if (from !== undefined && to !== undefined) {
-        query = query.range(from, to);
-      }
-
-      const { data, error, count } = await query;
+    async list() {
+      const { data, error } = await supabase
+        .from("metodos_pago")
+        .select("*")
       if (error) throw error;
-      return { data: data ?? [], count: count ?? 0 };
+      return data ?? [];
     },
 
     async create(payload) {
       const { data, error } = await supabase
-        .from("categorias")
+        .from("metodos_pago")
         .insert(payload)
         .select("*")
         .single();
@@ -31,7 +25,7 @@ export function createCategoriasRepo(supabase) {
 
     async delete(id) {
       const { data, error } = await supabase
-        .from("categorias")
+        .from("metodos_pago")
         .delete()
         .eq("id", id)
         .select("*")

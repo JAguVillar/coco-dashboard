@@ -1,5 +1,5 @@
 <script setup>
-import { h, resolveComponent, ref, computed, onMounted } from "vue";
+import { h, resolveComponent, ref, computed } from "vue";
 import ProveedorCreateModal from "~/components/proveedores/ProveedorCreateModal.vue";
 
 const UButton = resolveComponent("UButton");
@@ -10,6 +10,9 @@ const { loadProveedores, deleteProveedor } = useProveedores();
 
 const loading = ref(false);
 const rows = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 const openCreate = ref(false);
 
 const {
@@ -29,8 +32,17 @@ function getItemName(item) {
   return item?.nombre || "este proveedor";
 }
 
-function onEdit(proveedor) {
+function onEdit(_proveedor) {
   // TODO: implementar edición
+}
+
+function onChangePage(p) {
+  page.value = p;
+}
+
+function onChangePageSize(s) {
+  pageSize.value = Number(s);
+  page.value = 1;
 }
 
 const columns = computed(() => [
@@ -137,14 +149,25 @@ const columns = computed(() => [
 async function getProveedores() {
   loading.value = true;
   try {
-    const proveedores = await loadProveedores();
-    rows.value = proveedores ?? [];
+    const res = await loadProveedores({
+      page: page.value,
+      pageSize: pageSize.value,
+    });
+
+    rows.value = res.data;
+    total.value = res.count;
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(getProveedores);
+watch(
+  [page, pageSize],
+  () => {
+    getProveedores();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -178,7 +201,17 @@ onMounted(getProveedores);
         </UModal>
       </div>
 
-      <BaseTable :rows="rows" :columns="columns" :loading="loading" />
+      <BaseTable
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+        show-pagination
+        :page="page"
+        :page-size="pageSize"
+        :total="total"
+        @update:page="onChangePage"
+        @update:page-size="onChangePageSize"
+      />
 
       <ConfirmDeleteModal
         v-model:open="openConfirmDelete"
