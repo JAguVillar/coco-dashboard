@@ -112,10 +112,10 @@ watch(
 <template>
   <UDashboardPanel id="categorias">
     <template #body>
-      <div class="flex justify-between py-3.5 border-b border-accented">
-        <div class="flex items-center gap-2">
+      <div class="flex flex-col gap-3 py-3.5 border-b border-accented sm:flex-row sm:justify-between sm:items-center">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
           <UInput
-            class="w-72 lg:w-80"
+            class="w-full sm:w-72 lg:w-80"
             placeholder="Buscar categorías..."
             icon="i-lucide-search"
             variant="soft"

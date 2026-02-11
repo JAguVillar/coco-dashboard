@@ -252,7 +252,7 @@ async function onSubmit() {
           Información básica
         </h4>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Nombre" name="nombre" required>
             <UInput
               v-model="state.nombre"
@@ -288,7 +288,7 @@ async function onSubmit() {
           Contacto
         </h4>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Teléfono" name="telefono">
             <UInput
               v-model="state.telefono"
@@ -334,7 +334,7 @@ async function onSubmit() {
           />
         </UFormField>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <UFormField label="Provincia" name="provincia">
             <USelect
               v-model="state.provincia"
@@ -369,7 +369,7 @@ async function onSubmit() {
           Información comercial
         </h4>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Condición de pago" name="condicion_pago">
             <UInput
               v-model="state.condicion_pago"
@@ -392,7 +392,7 @@ async function onSubmit() {
           </UFormField>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Días de entrega" name="dias_entrega">
             <UInput
               v-model="state.dias_entrega"
@@ -422,7 +422,7 @@ async function onSubmit() {
           Persona de contacto
         </h4>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Nombre" name="nombre_contacto">
             <UInput
               v-model="state.nombre_contacto"

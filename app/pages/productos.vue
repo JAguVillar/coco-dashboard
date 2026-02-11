@@ -201,56 +201,59 @@ watch(search, () => {
 </script>
 
 <template>
-  <div>
-    <div class="flex justify-between py-3.5 border-b border-accented">
-      <div class="flex items-center gap-2">
-        <UInput
-          v-model="search"
-          class="w-72 lg:w-80"
-          placeholder="Buscar por cliente o comprobante..."
-          icon="i-lucide-search"
-          variant="soft"
-          clearable
-        />
-        <!-- futuro: filtros acá -->
+  <UDashboardPanel id="productos">
+    <template #body>
+      <div class="flex flex-col gap-3 py-3.5 border-b border-accented sm:flex-row sm:justify-between sm:items-center">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <UInput
+            v-model="search"
+            class="w-full sm:w-72 lg:w-80"
+            placeholder="Buscar por cliente o comprobante..."
+            icon="i-lucide-search"
+            variant="soft"
+            clearable
+          />
+          <!-- futuro: filtros acá -->
+        </div>
+
+        <UModal v-model:open="openCreate">
+          <UButton
+            label="Cargar artículo"
+            icon="i-lucide-plus"
+            variant="outline"
+            color="neutral"
+            size="md"
+            class="w-full sm:w-auto"
+          />
+          <template #content>
+            <ProductoCreateModal
+              @created="getProductos()"
+              @close="openCreate = false"
+            />
+          </template>
+        </UModal>
       </div>
 
-      <UModal v-model:open="openCreate">
-        <UButton
-          label="Cargar artículo"
-          icon="i-lucide-plus"
-          variant="outline"
-          color="neutral"
-          size="md"
-        />
-        <template #content>
-          <ProductoCreateModal
-            @created="getProductos()"
-            @close="openCreate = false"
-          />
-        </template>
-      </UModal>
-    </div>
+      <BaseTable
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+        show-pagination
+        :page="page"
+        :page-size="pageSize"
+        :total="total"
+        @update:page="onChangePage"
+        @update:page-size="onChangePageSize"
+      />
 
-    <BaseTable
-      :rows="rows"
-      :columns="columns"
-      :loading="loading"
-      show-pagination
-      :page="page"
-      :page-size="pageSize"
-      :total="total"
-      @update:page="onChangePage"
-      @update:page-size="onChangePageSize"
-    />
-
-    <ConfirmDeleteModal
-      v-model:open="openConfirmDelete"
-      title="Eliminar artículo"
-      :item-name="getItemName(itemToDelete)"
-      :deleting="deleting"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-    />
-  </div>
+      <ConfirmDeleteModal
+        v-model:open="openConfirmDelete"
+        title="Eliminar artículo"
+        :item-name="getItemName(itemToDelete)"
+        :deleting="deleting"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
+    </template>
+  </UDashboardPanel>
 </template>
