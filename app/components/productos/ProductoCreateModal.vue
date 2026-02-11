@@ -231,7 +231,7 @@ onMounted(async () => {
     </template>
 
     <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Código" name="codigo">
           <UInput
             v-model="state.codigo"
@@ -257,7 +257,7 @@ onMounted(async () => {
         />
       </UFormField>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Categoría" name="categoria">
           <UInput
             v-model="state.categoria"
@@ -287,7 +287,7 @@ onMounted(async () => {
         <USwitch v-model="state.es_fraccionable" :disabled="submitting" />
       </UFormField>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Stock actual" name="stock_actual" required>
           <UInput
             v-model="state.stock_actual"
@@ -311,7 +311,7 @@ onMounted(async () => {
         </UFormField>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Precio de compra" name="precio_compra">
           <UInput
             v-model="state.precio_compra"
@@ -338,7 +338,7 @@ onMounted(async () => {
         </UFormField>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormField label="Proveedor" name="proveedor_id">
           <template #hint>
             <UButton
