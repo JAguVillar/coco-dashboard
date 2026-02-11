@@ -1,14 +1,15 @@
 export function createProductsRepo(supabase) {
   return {
-    async list({ from, to } = {}) {
-      let query = supabase
-        .from("articulos")
-        .select("*", { count: "exact" });
+    async list({ from, to, search } = {}) {
+      let query = supabase.from("articulos").select("*", { count: "exact" });
 
       if (from !== undefined && to !== undefined) {
         query = query.range(from, to);
       }
-
+      if (search && search.trim()) {
+        const q = `%${search.trim()}%`;
+        query = query.or(`nombre.ilike.${q}`);
+      }
       const { data, error, count } = await query;
       if (error) throw error;
       return { data: data ?? [], count: count ?? 0 };

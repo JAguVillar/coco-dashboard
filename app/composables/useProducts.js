@@ -7,14 +7,15 @@ export function useProducts() {
   const loading = ref(false);
   const error = ref(null);
 
-  async function loadProducts({ page = 1, pageSize = 10 } = {}) {
+  async function loadProducts({ page = 1, pageSize = 10, search } = {}) {
+    console.log("search", search);
     loading.value = true;
     error.value = null;
     try {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      const { data, count } = await repo.list({ from, to });
+      const { data, count } = await repo.list({ from, to, search });
       
       return {
         data: data ?? [],

@@ -214,7 +214,7 @@ watch(search, () => {
       :page-size="pageSize"
       :total="total"
       @update:page="onChangePage"
-      @update:pageSize="onChangePageSize"
+      @update:page-size="onChangePageSize"
     />
     <UModal v-model:open="openDetails">
       <template #content>

@@ -14,6 +14,7 @@ const page = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 const openCreate = ref(false);
+const search = ref("");
 
 const {
   open: openConfirmDelete,
@@ -169,6 +170,7 @@ async function getProductos() {
   loading.value = true;
   try {
     const res = await loadProducts({
+      search: search.value,
       page: page.value,
       pageSize: pageSize.value,
     });
@@ -180,6 +182,8 @@ async function getProductos() {
   }
 }
 
+let searchTimeout = null;
+
 watch(
   [page, pageSize],
   () => {
@@ -187,6 +191,13 @@ watch(
   },
   { immediate: true },
 );
+watch(search, () => {
+  page.value = 1;
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    getProductos();
+  }, 300);
+});
 </script>
 
 <template>
@@ -194,10 +205,12 @@ watch(
     <div class="flex justify-between py-3.5 border-b border-accented">
       <div class="flex items-center gap-2">
         <UInput
+          v-model="search"
           class="w-72 lg:w-80"
-          placeholder="Buscar artículos..."
+          placeholder="Buscar por cliente o comprobante..."
           icon="i-lucide-search"
           variant="soft"
+          clearable
         />
         <!-- futuro: filtros acá -->
       </div>
